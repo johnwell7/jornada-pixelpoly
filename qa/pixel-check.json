@@ -1,0 +1,15 @@
+{
+  "frames": 81,
+  "resolution": [
+    256,
+    286
+  ],
+  "ground_test_rows": [
+    225,
+    286
+  ],
+  "max_changed_ground_channels": 0,
+  "worst_ground_frame": 0,
+  "decoded_bytes": 23721984,
+  "compressed_bytes": 3912680
+}
