@@ -26,7 +26,7 @@ function preload(manifest){
  if(!assetCache.has(manifest)){
   const images=[];
   const promise=Promise.all(manifest.pages.map(p=>new Promise(resolve=>{
-   const image=new Image();images.push(image);image.onload=()=>resolve(true);image.onerror=()=>resolve(false);image.src=p.src;
+   const image=new Image();images.push(image);image.onload=async()=>{try{if(image.decode)await image.decode();resolve(true);}catch{resolve(false);}};image.onerror=()=>resolve(false);image.src=p.src;
   }))).then(results=>results.every(Boolean));
   assetCache.set(manifest,{images,promise});
  }
@@ -37,13 +37,19 @@ export function animateFullLamb(lamb,{random=Math.random,manifest=lambFrames}={}
  const picture=lamb.querySelector('[data-lamb-frame-image]');
  const media=matchMedia('(prefers-reduced-motion: reduce)');
  lamb.classList.add('bitpoly-motion');
- let disposed=false,ready=false,raf=0,index=0,page=-1,clock=0,last=null,idle=0;
+ let disposed=false,ready=false,raf=0,index=0,page=-1,geometry='',clock=0,last=null,idle=0;
  let active=null,pending=null,breathStart=0,nextBlink=2100,nextTilt=6500,sleeping=false;
  function display(next){
   if(next===index&&page>=0)return;
   const f=manifest.frames[next],p=manifest.pages[f.page];
-  if(page!==f.page){picture.setAttribute('href',p.src);picture.setAttribute('width',p.width*1085/256);picture.setAttribute('height',p.height*1210/286);page=f.page;}
-  picture.setAttribute('x',110-f.x*1085/256);picture.setAttribute('y',-f.y*1210/286);index=next;lamb.dataset.frame=String(next);
+  const nextGeometry=`${p.width}:${p.height}:${f.x}:${f.y}`;
+  if(geometry!==nextGeometry){
+   picture.setAttribute('width',p.width*1085/256);picture.setAttribute('height',p.height*1210/286);
+   picture.setAttribute('x',110-f.x*1085/256);picture.setAttribute('y',-f.y*1210/286);
+   geometry=nextGeometry;
+  }
+  if(page!==f.page){picture.setAttribute('href',p.src);page=f.page;}
+  index=next;lamb.dataset.frame=String(next);
  }
  function begin(kind){
   // Traversing authored frames back to neutral avoids snapping on rapid touches.

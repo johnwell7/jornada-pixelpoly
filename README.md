@@ -29,7 +29,7 @@ O build verifica a sintaxe e executa 26 testes. Não transforma ou copia o aplic
 
 ## Animação atual
 
-A ovelha padrão usa 81 quadros completos em atlas WebP para respiração, piscada, inclinação e carinho. O Blender é usado somente para produzir os sprites. O navegador reproduz os quadros sem separar cabeça, lã e patas.
+A ovelha padrão usa 81 quadros completos em imagens WebP individuais de posição fixa para respiração, piscada, inclinação e carinho. O Blender é usado somente para produzir os sprites. O navegador reproduz os quadros sem separar cabeça, lã e patas.
 
 Os trajes anteriores ainda usam o controlador antigo e precisam ser convertidos. A validação visual em celular continua pendente. Os testes automatizados não representam uma medição de FPS em aparelho real.
 

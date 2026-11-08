@@ -54,6 +54,11 @@ test('full player handles loading, repeated petting, all four actions, pauses an
   e.document.hidden=false;e.document.dispatchEvent(new Event('visibilitychange'));assert.equal(e.jobs.size,1);
   e.media.matches=true;e.media.dispatchEvent(new Event('change'));assert.equal(e.lamb.dataset.frame,'0');assert.equal(e.jobs.size,0);player.pet();assert.equal(e.lamb.dataset.frame,'0');
   e.media.matches=false;e.media.dispatchEvent(new Event('change'));assert.equal(e.jobs.size,1);
+  // Switching complete sprites must never shift or resize the sampling rectangle.
+  for(const [attribute,expected] of [['x',110],['y',0],['width',1085],['height',1210]]){
+   const values=e.writes.filter(([name])=>name===attribute).map(([,value])=>Number(value));
+   assert.equal(values.length,1);assert.ok(values.every(v=>v===expected),attribute+' changed during playback');
+  }
   player.dispose();assert.equal(e.jobs.size,0);assert.equal(e.listeners.size,0);
  }finally{e.restore();}
 });
