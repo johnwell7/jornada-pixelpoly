@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 165">
+<defs>
+ <linearGradient id="plate" x2="1" y2="1"><stop stop-color="#594333"/><stop offset=".42" stop-color="#372b23"/><stop offset="1" stop-color="#201a17"/></linearGradient>
+ <linearGradient id="clip" x2="1" y2="1"><stop stop-color="#f9d299"/><stop offset=".65" stop-color="#c39865"/><stop offset="1" stop-color="#845a39"/></linearGradient>
+</defs>
+<path fill="#6f4a31" d="m87 58 15-42 10-11 38 1 8 8-19 47Zm13-8 29 1 11-36-26 1-6 8Z" fill-rule="evenodd"/>
+<path fill="#211914" d="M5 69 18 54 33 48l186-6 15 10 5 12-1 76-9 15-15 6-188 2-17-10-5-12Z"/>
+<path fill="url(#plate)" stroke="#c49869" stroke-width="2" d="M6 69 20 54 34 50l182-7 16 10 5 11-2 75-10 11-197 7-14-10-6-10Z"/>
+<path fill="#8e6c50" opacity=".8" d="m6 69 14-15 14-4 32-1-37 12-16 19Zm210-26 16 10 5 11-17-9-32-10Z"/>
+<path fill="#604835" opacity=".52" d="m29 61 37-12 43-1-50 32-30 8-16-8Zm115 10 44-26 32 10-22 21-39 8Z"/>
+<path fill="#251b16" opacity=".7" d="m59 80 50-32 35 23-10 22-50 14-55-19Zm163 23 15-39-2 75-10 11-41 2 25-18Z"/>
+<path fill="#1b1511" opacity=".55" d="m106 44 31-4 18 11 11 34-14 9-28-4Z"/>
+<path fill="url(#clip)" stroke="#9a724d" stroke-width="1.2" d="m112 5 39 1 8 9 11 51-4 10-34 3-7-8-11-49-9-7Z"/>
+<path fill="#ffdda4" d="m112 5 39 1 8 9-42-3-12 3Z"/>
+<path fill="#8f6544" d="m125 71 7 8 34-3 4-10-8 4-30 3Z"/>
+<circle cx="146" cy="53" r="10" fill="#866044"/>
+<circle cx="146" cy="51" r="9" fill="url(#clip)" stroke="#f3ca93" stroke-width="1.2"/>
+<g fill="#f5d7aa" text-anchor="middle" font-family="Georgia,serif" font-weight="bold">
+<text x="121" y="102" font-size="24" letter-spacing="4">ELDER</text>
+<path d="m33 111 176-3-176 5Z"/>
+<text x="121" y="123" font-size="9" letter-spacing="1.1">THE CHURCH OF</text>
+<text x="121" y="138" font-size="15" letter-spacing="1">JESUS CHRIST</text>
+<text x="121" y="149" font-size="8" letter-spacing=".8">OF LATTER-DAY SAINTS</text>
+</g>
+</svg>
