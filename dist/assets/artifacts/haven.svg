@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 660" fill="none">
+<defs>
+ <linearGradient id="wall" x1="230" y1="120" x2="230" y2="470" gradientUnits="userSpaceOnUse"><stop stop-color="#f4dfbd"/><stop offset="1" stop-color="#ddc6a1"/></linearGradient>
+ <linearGradient id="side" x1="430" y1="150" x2="630" y2="430" gradientUnits="userSpaceOnUse"><stop stop-color="#d6b992"/><stop offset="1" stop-color="#c3a67e"/></linearGradient>
+ <linearGradient id="floor" x1="350" y1="320" x2="350" y2="600" gradientUnits="userSpaceOnUse"><stop stop-color="#e8d6b4"/><stop offset="1" stop-color="#cdb88e"/></linearGradient>
+ <linearGradient id="sky" x1="290" y1="220" x2="290" y2="360" gradientUnits="userSpaceOnUse"><stop stop-color="#bac9ae"/><stop offset="1" stop-color="#e9e6be"/></linearGradient>
+ <radialGradient id="light"><stop stop-color="#fff7d7" stop-opacity=".7"/><stop offset="1" stop-color="#fff3d4" stop-opacity="0"/></radialGradient>
+ <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feGaussianBlur stdDeviation="10"/></filter>
+ <clipPath id="window"><path d="M239 313V230c0-64 109-64 109 0v106Z"/></clipPath>
+</defs>
+<!-- A tiny cutaway home, drawn specifically for Jornada. -->
+<ellipse cx="354" cy="581" rx="269" ry="38" fill="#52644a" opacity=".12" filter="url(#shadow)"/>
+<!-- earth and beveled plinth -->
+<path d="M56 459 347 330 647 458v52Q640 544 605 555L374 633q-29 10-56-2L90 532q-33-14-34-40Z" fill="#b3a181"/>
+<path d="M56 457 347 324 647 456v26q0 16-23 25L375 603q-25 9-50-1L78 499q-23-9-22-25Z" fill="#d4c29d"/>
+<path d="m69 443 270-126 296 125q25 12 0 24L374 568q-25 10-49-1L69 463q-23-10 0-20Z" fill="url(#floor)"/>
+<!-- back walls and soft plaster edges -->
+<path d="M74 446V216q0-19 19-27L353 79l269 115q18 8 18 27v222L352 330Z" fill="#b79d76"/>
+<path d="M87 441V225q0-15 14-21L351 98v243Z" fill="url(#wall)"/>
+<path d="M351 98 614 209q12 5 12 19v214L351 341Z" fill="url(#side)"/>
+<path d="m87 441 264-100 275 101" stroke="#b59b74" stroke-width="7"/>
+<path d="M78 216 351 97l279 120M351 98v243" stroke="#f3dfbd" stroke-width="7" stroke-linecap="round"/>
+<!-- arched window with outdoor hills -->
+<path d="M227 320V227c0-79 134-79 134 0v111Z" fill="#af956d"/>
+<path d="M239 313V230c0-64 109-64 109 0v106Z" fill="url(#sky)"/>
+<g clip-path="url(#window)"><circle cx="315" cy="219" r="22" fill="#fff0bd"/><path d="M224 287q64-63 147 3v60H224Z" fill="#a6b28d"/><path d="M220 311q60-57 146 2v40H220Z" fill="#8b9d77"/><path d="M270 350q-9-39 43-58" stroke="#dbd1a4" stroke-width="10"/></g>
+<path d="M293 191v136m-54-68 109 20" stroke="#dbc39c" stroke-width="8"/>
+<path d="m222 318 135 23 13-9-132-24Z" fill="#f1dfba"/><path d="m222 318 135 23v10l-135-23Z" fill="#c9ad82"/>
+<!-- quiet sunbeam across floor -->
+<path d="m248 328 98 17 179 109-170 49Z" fill="#fff2c6" opacity=".27"/>
+<!-- shelf and objects -->
+<path d="m411 247 160 67 18-9-161-67Z" fill="#ab845b"/><path d="m411 247 160 67v12l-160-66Z" fill="#8e704f"/>
+<path d="m431 241 12 5v-57l-12-5Z" fill="#7e8e70"/><path d="m445 247 11 5v-48l-11-5Z" fill="#b57353"/><path d="m459 253 12 5 9-52-11-4Z" fill="#e7d2a7"/><path d="m438 195v41m12-27v32" stroke="#d5c49b" stroke-width="2"/>
+<path d="M506 246q-4 31 17 37 23 9 21-18l-4-18-30-12Z" fill="#d4b28b"/><ellipse cx="525" cy="243" rx="15" ry="6" transform="rotate(23 525 243)" fill="#9d7b55"/>
+<path d="m526 246 3-53m0 23q-20-24-30-15 0 16 29 24m1-12q12-31 25-20 0 16-25 25" stroke="#647952" stroke-width="4" fill="#889467"/>
+<!-- wall hanging -->
+<path d="m411 291 39 16v49l-39-16Z" fill="#8e7655"/><path d="m416 299 29 12v36l-29-12Z" fill="#e4d5b4"/><path d="m429 314 3 19m-10-13 17 7m-15-12 13 16" stroke="#9b9f75" stroke-width="2"/>
+<!-- small storage chest -->
+<path d="m500 359 61 24 36-17-60-23Z" fill="#ad8660"/><path d="m500 359 61 24v56l-61-25Z" fill="#97724d"/><path d="m561 383 36-17v56l-36 17Z" fill="#805e3e"/><path d="m500 374 61 24 36-17" stroke="#70583c" stroke-width="3"/><path d="m528 380 10 4v16l-10-4Z" fill="#d7b96c"/>
+<!-- braided rug -->
+<ellipse cx="349" cy="466" rx="137" ry="61" fill="#a68a67" opacity=".2"/>
+<ellipse cx="349" cy="458" rx="133" ry="58" fill="#a4aa80"/><ellipse cx="349" cy="458" rx="121" ry="49" stroke="#c8cc9e" stroke-width="3"/><ellipse cx="349" cy="458" rx="107" ry="41" stroke="#778a65" stroke-width="2" stroke-dasharray="4 4"/><ellipse cx="349" cy="458" rx="98" ry="35" fill="#b6ba91"/>
+<!-- low study table: book is an interactive HTML object above it -->
+<path d="m136 426 72 29v40l-9 4-4-38-49-20-1 32-9-4Z" fill="#88674a"/><path d="m114 410 67-29 78 31-67 30Z" fill="#c5a378"/><path d="m114 410 78 32 67-30v12l-67 30-78-32Z" fill="#a88259"/>
+<!-- potted olive at the threshold -->
+<ellipse cx="573" cy="490" rx="37" ry="13" fill="#8d8265" opacity=".22"/><path d="M544 443h53l-9 43q-18 13-35-1Z" fill="#b57d59"/><ellipse cx="570" cy="443" rx="27" ry="9" fill="#d19b72"/><ellipse cx="570" cy="443" rx="20" ry="5" fill="#7a6b4f"/><path d="M570 444q-13-52 8-116m-11 67-26-28m31 5 28-23" stroke="#776c48" stroke-width="6" stroke-linecap="round"/>
+<g fill="#7f8d60"><ellipse cx="547" cy="363" rx="14" ry="27" transform="rotate(-45 547 363)"/><ellipse cx="576" cy="337" rx="14" ry="29" transform="rotate(25 576 337)"/><ellipse cx="597" cy="352" rx="14" ry="26" transform="rotate(48 597 352)"/><ellipse cx="562" cy="383" rx="14" ry="26" transform="rotate(-52 562 383)"/></g><g fill="#a0ab7a"><ellipse cx="549" cy="353" rx="7" ry="18" transform="rotate(-45 549 353)"/><ellipse cx="577" cy="330" rx="7" ry="20" transform="rotate(25 577 330)"/></g>
+<!-- slippers, stones, tiny living details -->
+<path d="m431 526 24-9q13-3 16 6 1 6-10 10l-22 7q-12 1-8-14Z" fill="#bd8d65"/><path d="m457 540 24-9q13-3 16 6 1 6-10 10l-22 7q-12 1-8-14Z" fill="#b5825e"/>
+<path d="m100 526-10 13m14-11 4 13m-2-19 4-12m499 51 5 12m-2-16 10 5" stroke="#8c9b6b" stroke-width="3" stroke-linecap="round"/>
+<ellipse cx="161" cy="564" rx="15" ry="7" fill="#b4ae92"/><ellipse cx="182" cy="572" rx="9" ry="5" fill="#c7bea1"/>
+<circle cx="471" cy="375" r="105" fill="url(#light)" opacity=".3"/>
+</svg>
