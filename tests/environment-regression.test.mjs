@@ -31,11 +31,11 @@ test('anatomy remains bounded throughout greetings, affection, looking and susta
   }
 });
 
-test('drowsiness starts after 14s and sleep remains until interaction resets inactivity',()=>{
+test('reading sleep closes eyes at 14s and interaction resets inactivity',()=>{
   assert.equal(BITPOLY_IDLE_MS,14000);
-  assert.equal(sampleBitpolyPose(100,{idle:13999}).eyeScale,1);
-  assert.ok(sampleBitpolyPose(100,{idle:17000}).eyeScale<.6);
-  for(const idle of [19000,60000,3600000])assert.ok(sampleBitpolyPose(idle,{idle}).eyeScale<.07);
+  assert.equal(sampleBitpolyPose(100,{idle:13000,studying:true}).eyeScale,1);
+  assert.ok(sampleBitpolyPose(100,{idle:14000,studying:true}).eyeScale<.07);
+  for(const idle of [19000,60000,3600000])assert.ok(sampleBitpolyPose(idle,{idle,studying:true}).eyeScale<.07);
   assert.equal(sampleBitpolyPose(60000,{idle:0}).eyeScale,1);
 });
 
@@ -69,7 +69,7 @@ function environment(reduced=false){
 
 test('retained legacy outfit controller sleeps, wakes by touch/keyboard, follows pointer, alternates greetings and disposes cleanly',()=>{
   const env=environment();try{
-    const motion=animateBitpolyLamb(env.lamb,{random:()=>.4});
+    const motion=animateBitpolyLamb(env.lamb,{studying:true,random:()=>.4});
     env.advance(20000);assert.equal(env.lamb.dataset.bpState,'sleeping');
     env.document.dispatchEvent(new Event('pointerdown'));env.advance(20100);assert.equal(env.lamb.dataset.bpState,'awake');
     env.document.dispatchEvent(Object.assign(new Event('pointermove'),{clientX:330,clientY:100}));env.advance(20200);
@@ -80,6 +80,17 @@ test('retained legacy outfit controller sleeps, wakes by touch/keyboard, follows
     env.advance(40000);assert.equal(env.lamb.dataset.bpState,'sleeping');
     env.document.dispatchEvent(new Event('keydown'));env.advance(40100);assert.equal(env.lamb.dataset.bpState,'awake');
     motion.dispose();assert.equal(env.frames.size,0);assert.ok([...env.listeners.values()].every(s=>s.size===0));
+  }finally{env.restore();}
+});
+
+test('outfit lobby follows the 30 second awake and five second sleep cycle',()=>{
+  const env=environment();try{
+    const motion=animateBitpolyLamb(env.lamb,{random:()=>.4});
+    env.advance(29000);assert.equal(env.lamb.dataset.bpState,'awake');
+    env.advance(31000);assert.equal(env.lamb.dataset.bpState,'sleeping');
+    env.advance(34000);assert.equal(env.lamb.dataset.bpState,'sleeping');
+    env.advance(35100);assert.equal(env.lamb.dataset.bpState,'awake');
+    motion.dispose();
   }finally{env.restore();}
 });
 
@@ -194,3 +205,4 @@ test('a frame that has not loaded does not replace the currently visible flame',
     motion.dispose();assert.ok(loaders.every(i=>i.onload===null));
   }finally{globalThis.Image=previousImage;env.restore();}
 });
+

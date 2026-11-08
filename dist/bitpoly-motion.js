@@ -11,7 +11,8 @@ const rest=()=>({torsoY:0,torsoScale:1,headX:0,headY:0,headAngle:0,earLeft:0,ear
 export function sampleBitpolyPose(t,{idle=0,action='',actionAge=0,gazeX=0,gazeY=0,blink=0,reduced=false,studying=false}={}) {
   const p=rest();
   if(reduced)return p;
-  const drowsy=smooth((idle-BITPOLY_IDLE_MS)/4800);
+  const sleepDelay=studying?BITPOLY_IDLE_MS:30000;
+  const drowsy=smooth((idle-sleepDelay+800)/800);
   const breath=(Math.sin(t/3600*TAU-Math.PI/2)+1)/2;
   p.torsoScale=1+breath*(.013-drowsy*.004);
   p.torsoY=-breath*1.6;
@@ -85,6 +86,7 @@ export function animateBitpolyLamb(lamb,{studying=false,random=Math.random}={}){
     eyes:[...lamb.querySelectorAll('.eye')]
   }:null;
   let frame=0,lastActivity=performance.now(),action='',actionStart=0;
+  const sleepDelay=studying?14000:30000;
   let blinkStart=0,nextBlink=performance.now()+2300+random()*2000,nextIdle=performance.now()+5000;
   let gazeX=0,gazeY=0,lastPet=-1,lastPoint=null,travel=0,lastTouch=-Infinity,disposed=false;
   function wake(){lastActivity=performance.now();lamb.dataset.bpState='awake';}
@@ -97,9 +99,10 @@ export function animateBitpolyLamb(lamb,{studying=false,random=Math.random}={}){
     if(now-blinkStart>140)blinkStart=0;
     if(action&&now-actionStart>BITPOLY_ACTION_MS)action='';
     if(!action&&now>nextIdle&&now-lastActivity<BITPOLY_IDLE_MS){action=['listen','glance','snuffle'][Math.floor(random()*3)];actionStart=now;nextIdle=now+6500+random()*3500;}
+    if(!studying&&now-lastActivity>=sleepDelay+5000){wake();action='welcome-perk';actionStart=now;}
     const idle=now-lastActivity;
     const p=sampleBitpolyPose(now,{idle,action,actionAge:now-actionStart,gazeX,gazeY,blink,reduced:media.matches,studying});
-    lamb.dataset.bpState=idle>=BITPOLY_IDLE_MS+4800?'sleeping':idle>=BITPOLY_IDLE_MS?'drowsy':'awake';
+    lamb.dataset.bpState=idle>=sleepDelay?'sleeping':idle>=sleepDelay-800?'drowsy':'awake';
     if(parts.torso){
       pivotTransform(parts.torso,0,0,p.torsoY,1,p.torsoScale);
       pivotTransform(parts.head,p.headAngle,p.headX,p.headY);
@@ -150,3 +153,4 @@ export function animateBitpolyLamb(lamb,{studying=false,random=Math.random}={}){
   };
   resume();return api;
 }
+
