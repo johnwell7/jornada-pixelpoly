@@ -12,13 +12,13 @@ function setup(studying){
  const player=animateFullLamb(lamb,{studying,random:()=>.2});
  return {lamb,player,document,advance(ms){for(let i=0;i<ms;i+=10){now+=10;const callbacks=[...jobs.values()];jobs.clear();callbacks.forEach(fn=>fn(now));}},close(){player.dispose();Object.assign(globalThis,saved);}};
 }
-test('lobby sleeps after 30 seconds, wakes after five seconds and gets a fresh awake interval',async()=>{
+test('lobby sleeps after 20 seconds, wakes after five seconds and gets a fresh awake interval',async()=>{
  const e=setup(false);try{
-  await new Promise(r=>setImmediate(r));e.advance(29900);assert.equal(e.lamb.dataset.bpState,'awake');
+  await new Promise(r=>setImmediate(r));e.advance(19900);assert.equal(e.lamb.dataset.bpState,'awake');
   e.advance(1800);assert.equal(e.lamb.dataset.bpState,'sleeping');
   e.advance(2600);assert.equal(e.lamb.dataset.bpState,'sleeping');
   e.advance(2400);assert.equal(e.lamb.dataset.bpState,'awake');
-  e.advance(20000);assert.equal(e.lamb.dataset.bpState,'awake');
+  e.advance(12000);assert.equal(e.lamb.dataset.bpState,'awake');
  }finally{e.close();}
 });
 test('reading sleeps after 14 seconds, stays asleep and wakes on screen interaction',async()=>{

@@ -83,13 +83,13 @@ test('retained legacy outfit controller sleeps, wakes by touch/keyboard, follows
   }finally{env.restore();}
 });
 
-test('outfit lobby follows the 30 second awake and five second sleep cycle',()=>{
+test('outfit lobby follows the 20 second awake and five second sleep cycle',()=>{
   const env=environment();try{
     const motion=animateBitpolyLamb(env.lamb,{random:()=>.4});
-    env.advance(29000);assert.equal(env.lamb.dataset.bpState,'awake');
-    env.advance(31000);assert.equal(env.lamb.dataset.bpState,'sleeping');
-    env.advance(34000);assert.equal(env.lamb.dataset.bpState,'sleeping');
-    env.advance(35100);assert.equal(env.lamb.dataset.bpState,'awake');
+    env.advance(19000);assert.equal(env.lamb.dataset.bpState,'awake');
+    env.advance(21000);assert.equal(env.lamb.dataset.bpState,'sleeping');
+    env.advance(24000);assert.equal(env.lamb.dataset.bpState,'sleeping');
+    env.advance(25100);assert.equal(env.lamb.dataset.bpState,'awake');
     motion.dispose();
   }finally{env.restore();}
 });
@@ -98,7 +98,7 @@ test('wind controller changes articulated regions, pauses for reduced motion and
   const env=environment();try{
     const joints=[env.node('crown','445 35'),env.node('middle','424 586')];
     const stage={querySelectorAll:()=>[{dataset:{bpPlant:'vine'},querySelectorAll:()=>joints}],closest:()=>null};
-    const motion=animateBitpolyPlants(stage);env.advance(5000);
+    const motion=animateBitpolyPlants(stage,{random:()=>.2});for(let t=0;t<=5000;t+=50)env.advance(t);
     assert.notEqual(joints[0].attributes.transform,joints[1].attributes.transform);
     env.media.matches=true;env.media.dispatchEvent(new Event('change'));assert.equal(env.frames.size,0);assert.equal(joints[0].attributes.transform,undefined);
     motion.dispose();assert.ok([...env.listeners.values()].every(s=>s.size===0));

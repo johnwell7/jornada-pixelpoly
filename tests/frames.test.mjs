@@ -54,7 +54,7 @@ test('full player handles loading, repeated petting, all four actions, pauses an
    player.play(kind);for(let n=0;n<220;n++){e.step();visited.add(+e.lamb.dataset.frame);}
   }
   assert.ok(visited.has(50));assert.ok(visited.has(64));assert.ok(visited.has(80));
-  player.pet();for(let n=0;n<120;n++){player.pet();e.step();assert.ok(+e.lamb.dataset.frame<81);}
+  player.pet();for(let n=0;n<120;n++){player.pet();e.step();assert.ok(+e.lamb.dataset.frame<lambFrames.frames.length);}
   e.setInert(true);const held=e.lamb.dataset.frame;for(let n=0;n<180;n++)e.step();assert.equal(e.lamb.dataset.frame,held);e.setInert(false);
   e.document.hidden=true;e.document.dispatchEvent(new Event('visibilitychange'));assert.equal(e.jobs.size,0);
   e.document.hidden=false;e.document.dispatchEvent(new Event('visibilitychange'));assert.equal(e.jobs.size,1);
