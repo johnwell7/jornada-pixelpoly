@@ -1,167 +1,123 @@
-"""Render Aaron's full sprites from the supplied transparent PNG.
+"""Build the priestly outfit with the default sheep's two-stage renderer.
 
-Run: python production/render-priestly-frames.py path/to/original.png
-Requires Pillow and NumPy. All deformation happens here, outside the game.
+Run from anywhere: python production/render-priestly-frames.py --blender /path/to/blender
+Requires Pillow, NumPy, Node and Chrome, as used by the shared renderers.
 """
-from pathlib import Path
-import hashlib
+from argparse import ArgumentParser
+from hashlib import sha256
 import json
-import math
-import sys
+import os
+from pathlib import Path
+import subprocess
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / 'reference/priestly-original.jpg'
 OUTPUT = ROOT / 'dist/assets/bitpoly/priestly'
-WIDTH, HEIGHT, SUPERSAMPLE = 256, 286, 2
-GROUND_ROW = 222
+WIDTH, HEIGHT = 256, 286
+GROUND_ROW = 225
 
 
-def smooth(value):
-    t = np.clip(value, 0, 1)
-    return t * t * (3 - 2 * t)
+def prepare(source_path, staging, standard_neutral):
+    original = Image.open(source_path).convert('RGB')
+    if original.size != (864, 1536):
+        raise ValueError('This registration expects the supplied 864 × 1536 artwork.')
+    pixels = np.asarray(original)
+    brightness = pixels.max(axis=2)
+    boundary = Image.fromarray(np.where(brightness > 20, 255, 0).astype(np.uint8)).copy()
+    ImageDraw.floodfill(boundary, (0, 0), 128)
+    silhouette = boundary.point(lambda value: 0 if value == 128 else 255)
+    bounds = silhouette.getbbox()
+    if not bounds or bounds[0] == 0 or bounds[1] == 0 or bounds[2] == original.width or bounds[3] == original.height:
+        raise ValueError('The source silhouette must be isolated from the black canvas.')
+    # Preserve source RGB and soften alpha only on the one-pixel outer edge.
+    interior = np.asarray(silhouette.filter(ImageFilter.MinFilter(3))) > 0
+    edge = np.asarray(silhouette.filter(ImageFilter.MaxFilter(3))) > 0
+    alpha = np.where(interior, 255, np.where(edge, np.clip((brightness.astype(float)-7)/27, 0, 1)*255, 0))
+    texture = original.convert('RGBA')
+    texture.putalpha(Image.fromarray(np.rint(alpha).astype(np.uint8)))
+    texture_path = staging / 'texture.png'
+    texture.save(texture_path)
+
+    original_alpha = Image.open(standard_neutral).convert('RGBA').getchannel('A')
+    left, top, right, bottom = original_alpha.point(lambda value: 255 if value > 127 else 0).getbbox()
+    x0, y0, x1, y1 = bounds
+    scale = (bottom - top) / (y1 - y0)
+    offset_x = (left + right - (x0 + x1) * scale) / 2
+    offset_y = bottom - y1 * scale
+    # Camera coordinates come from render_sprites.py and remain shared with the default skin.
+    placement = [110 + offset_x*1085/WIDTH, offset_y*1210/HEIGHT, scale*1085/WIDTH, scale*1210/HEIGHT]
+    eyes = [[x, 638, 29, 46, bytes(pixels[638, skin_x]).hex()]
+            for x, skin_x in [(336, 370), (530, 563)]]
+    ears = [[offset_x + x*scale, offset_y + 592*scale] for x in (121, 742)]
+    registration = staging / 'registration.json'
+    registration.write_text(json.dumps({
+        'size': original.size, 'texture': str(texture_path), 'output': str(staging / 'blender'),
+        'placement': placement, 'eyes': eyes, 'ears': ears,
+    }))
+    return registration, texture.crop(texture.getbbox())
 
 
-def premultiplied(pixels):
-    rgba = np.asarray(pixels, dtype=np.float32) / 255
-    rgba[..., :3] *= rgba[..., 3:4]
-    return rgba
+def build(blender, source_path):
+    standard = (ROOT / 'dist/lamb-frames-data.js').read_text(encoding='utf-8')
+    manifest = json.loads(standard[standard.index('{'):standard.rindex('}')+1])
+    neutral_path = ROOT / 'dist' / manifest['pages'][0]['src']
+    with TemporaryDirectory(prefix='jornada-priestly-') as directory:
+        staging = Path(directory)
+        registration, portrait = prepare(source_path, staging, neutral_path)
+        subprocess.run([blender, '-b', '--factory-startup', '--python-exit-code', '1',
+                        '--python', 'production/render_sprites.py'], cwd=ROOT, check=True,
+                       env={**os.environ, 'JORNADA_SPRITE_CONFIG': str(registration)})
+        base = staging / 'blender'
+        neutral = base / 'neutral.webp'
+        Image.open(base / '000.png').save(neutral, lossless=True)
+        motion = staging / 'motion'
+        subprocess.run(['node', 'production/render-motion.cjs', str(neutral), str(motion), str(registration)],
+                       cwd=ROOT, check=True)
+
+        OUTPUT.mkdir(parents=True, exist_ok=True)
+        ground = np.asarray(Image.open(base / '000.png').convert('RGBA'))[GROUND_ROW:]
+        examples = []
+        for clip, indices in manifest['clips'].items():
+            for pose, index in enumerate(indices):
+                path = base / f'{index:03}.png'
+                if clip in ('breath', 'listenLeft', 'listenRight', 'perk'):
+                    path = motion / f'{clip}-{pose:02}.png'
+                with Image.open(path) as source:
+                    frame = source.convert('RGBA')
+                pixels = np.array(frame)
+                if frame.size != (WIDTH, HEIGHT) or not np.array_equal(pixels[GROUND_ROW:, :, 3], ground[:, :, 3]):
+                    raise ValueError(f'Frame {index} changed the support geometry.')
+                opaque = ground[:, :, 3] == 255
+                if not np.array_equal(pixels[GROUND_ROW:][opaque], ground[opaque]):
+                    raise ValueError(f'Frame {index} changed the support pixels.')
+                # Canvas round trips premultiply edge RGB. Preserve the exact Blender pixels in the pinned area.
+                pixels[GROUND_ROW:] = ground
+                frame = Image.fromarray(pixels)
+                frame.save(OUTPUT / f'frame-{index:03}.webp', lossless=True, method=4)
+                if index == 0 or pose == len(indices)-1:
+                    examples.append((clip if index else 'neutral', frame))
+
+        portrait.save(OUTPUT / 'portrait.webp', lossless=True, method=4)
+        write_manifest(manifest, sha256(source_path.read_bytes()).hexdigest()[:12])
+        sheet = Image.new('RGB', (WIDTH*5, (HEIGHT+22)*2), '#3b302a')
+        labels = ImageDraw.Draw(sheet)
+        for i, (label, frame) in enumerate(examples):
+            x, y = i % 5 * WIDTH, i // 5 * (HEIGHT+22)
+            sheet.paste(frame, (x, y), frame)
+            labels.text((x+9, y+HEIGHT+4), label, fill='white')
+        sheet.save(ROOT / 'qa/priestly-contact.png')
+        print(f'{len(manifest["frames"])} complete frames; supporting pixels verified.')
 
 
-def rgba_image(pixels):
-    alpha = pixels[..., 3:4]
-    rgb = np.divide(pixels[..., :3], alpha, out=np.zeros_like(pixels[..., :3]), where=alpha > 0)
-    rgba = np.concatenate((rgb, alpha), axis=-1)
-    return Image.fromarray(np.rint(np.clip(rgba, 0, 1) * 255).astype(np.uint8))
-
-
-def sample(texture, x, y):
-    height, width = texture.shape[:2]
-    x = np.clip(x, 0, width - 1)
-    y = np.clip(y, 0, height - 1)
-    x0, y0 = np.floor(x).astype(int), np.floor(y).astype(int)
-    x1, y1 = np.minimum(x0 + 1, width - 1), np.minimum(y0 + 1, height - 1)
-    u, v = (x - x0)[..., None], (y - y0)[..., None]
-    return ((1 - u) * texture[y0, x0] + u * texture[y0, x1]) * (1 - v) + ((1 - u) * texture[y1, x0] + u * texture[y1, x1]) * v
-
-
-def prepare_source(path):
-    source = Image.open(path).convert('RGBA')
-    if source.size != (1254, 1254):
-        raise ValueError('This rig is registered to the supplied 1254 × 1254 Aaron artwork.')
-    alpha = source.getchannel('A')
-    solid = alpha.point(lambda a: 255 if a > 48 else 0)
-    ImageDraw.floodfill(solid, (620, 500), 128)
-    silhouette = solid.point(lambda a: 255 if a == 128 else 0).filter(ImageFilter.MaxFilter(5))
-    source.putalpha(Image.fromarray(np.where(np.asarray(silhouette) > 0, np.asarray(alpha), 0).astype(np.uint8)))
-    left, top, right, bottom = source.getbbox()
-    scale = 259 / (bottom - top)
-    offset_x = 128 - (left + right) * scale / 2
-    offset_y = 274 - bottom * scale
-    canvas = Image.new('RGBA', (WIDTH * SUPERSAMPLE, HEIGHT * SUPERSAMPLE))
-    crop = source.crop((left, top, right, bottom))
-    portrait = crop.copy()
-    portrait.thumbnail((512, 512), Image.Resampling.LANCZOS)
-    portrait.save(OUTPUT / 'portrait.webp', lossless=True, method=4)
-    resized = crop.resize((round(crop.width * scale * SUPERSAMPLE), round(crop.height * scale * SUPERSAMPLE)), Image.Resampling.LANCZOS)
-    origin = (round((left * scale + offset_x) * SUPERSAMPLE), round((top * scale + offset_y) * SUPERSAMPLE))
-    canvas.paste(resized, origin)
-    eyes = [(origin[0] / SUPERSAMPLE + (eye - left) * resized.width / crop.width / SUPERSAMPLE,
-             origin[1] / SUPERSAMPLE + (483 - top) * resized.height / crop.height / SUPERSAMPLE) for eye in (526, 725)]
-    return premultiplied(canvas), eyes
-
-
-Y, X = np.mgrid[:HEIGHT * SUPERSAMPLE, :WIDTH * SUPERSAMPLE].astype(np.float32) / SUPERSAMPLE
-
-
-def eyelids(neutral, eyes, closure):
-    if not closure:
-        return neutral
-    texture = neutral.copy()
-    for cx, cy in eyes:
-        dx, dy = X - cx, Y - cy
-        x_weight = 1 - smooth((np.abs(dx) - 5.2) / 2.7)
-        y_weight = 1 - smooth((np.abs(dy) - 9.2) / 2.5)
-        edge = -11.5 + 24 * closure
-        cover = (x_weight * y_weight * smooth((edge - dy) / 2.4))[..., None]
-        left = sample(neutral, np.full_like(Y, (cx - 7.8) * SUPERSAMPLE), Y * SUPERSAMPLE)
-        right = sample(neutral, np.full_like(Y, (cx + 7.8) * SUPERSAMPLE), Y * SUPERSAMPLE)
-        blend = np.clip((dx + 7.8) / 15.6, 0, 1)[..., None]
-        face = left * (1 - blend) + right * blend
-        texture = texture * (1 - cover) + face * cover
-        # The closed lid is painted into the same texture and follows the head.
-        arc = 2.2 - 0.095 * dx ** 2
-        line = ((1 - smooth((np.abs(dy - arc) - .52) / .55)) *
-                (1 - smooth((np.abs(dx) - 3.9) / .95)) * smooth((closure - .77) / .23))[..., None]
-        texture = texture * (1 - line) + np.array([.19, .071, .037, 1], dtype=np.float32) * line
-    return texture
-
-
-def render(neutral, eyes, clip, amount):
-    dx = np.zeros_like(X)
-    dy = np.zeros_like(Y)
-    closure = 0
-    support = 1 - smooth((Y - 210) / 9)
-    head_weight = 1 - smooth((Y - 132) / 41)
-    if clip == 'breath':
-        # Expand the cloth at its flanks while the breastplate lifts as a unit.
-        flank = smooth((np.abs(X - 128) - 32) / 33)
-        torso = np.exp(-((Y - 169) / 48) ** 2)
-        dx += (X - 128) * .026 * amount * torso * flank
-        dy -= 3.1 * amount * (1 - smooth((Y - 200) / 21))
-    elif clip in ('left', 'right', 'pet'):
-        direction = 1 if clip == 'right' else -1
-        angle = math.radians(direction * (2.0 if clip == 'pet' else 2.6) * amount)
-        px, py = X - 128, Y - 133
-        dx += ((math.cos(angle) - 1) * px - math.sin(angle) * py) * head_weight
-        dy += (math.sin(angle) * px + (math.cos(angle) - 1) * py) * head_weight
-        if clip == 'pet':
-            dy += 2.2 * amount * head_weight
-            closure = amount
-    elif clip in ('listenLeft', 'listenRight'):
-        side = -1 if clip == 'listenLeft' else 1
-        ear = np.exp(-((X - (128 + side * 78)) / 25) ** 2 - ((Y - 107) / 17) ** 2)
-        dx += side * 1.8 * amount * ear
-        dy -= 6.2 * amount * ear
-    elif clip == 'perk':
-        dy -= 3.8 * amount * head_weight
-    elif clip == 'blink':
-        closure = amount
-    texture = eyelids(neutral, eyes, closure)
-    warped = sample(texture, (X - dx * support) * SUPERSAMPLE, (Y - dy * support) * SUPERSAMPLE)
-    return rgba_image(warped).resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
-
-
-def main(source_path):
-    OUTPUT.mkdir(parents=True, exist_ok=True)
-    neutral, eyes = prepare_source(source_path)
-    text = (ROOT / 'dist/lamb-frames-data.js').read_text(encoding='utf-8')
-    manifest = json.loads(text[text.index('{'):text.rindex('}') + 1])
-    ground = None
-    examples = []
-    for clip, indices in manifest['clips'].items():
-        for pose, index in enumerate(indices):
-            if clip in ('breath', 'listenLeft', 'listenRight', 'perk'):
-                progress = pose / (len(indices) - 1)
-            else:
-                progress = (pose + 1) / len(indices)
-            amount = (1 - math.cos(math.pi * progress)) / 2
-            frame = render(neutral, eyes, clip, amount)
-            pixels = np.asarray(frame)
-            if index == 0:
-                ground = pixels[GROUND_ROW:].copy()
-                examples.append(('neutra', frame))
-            assert np.array_equal(np.asarray(frame)[GROUND_ROW:], ground)
-            frame.save(OUTPUT / f'frame-{index:03}.webp', lossless=True, method=4)
-            if pose == len(indices) - 1:
-                examples.append((clip, frame))
-    count = len(manifest['frames'])
-    art_version = hashlib.sha256(source_path.read_bytes()).hexdigest()[:12]
+def write_manifest(manifest, version):
     (ROOT / 'dist/priestly-frames-data.js').write_text(
         '// Generated by production/render-priestly-frames.py.\n'
-        f'const count = {count};\n'
-        f'const artVersion = "{art_version}";\n'
+        f'const count = {len(manifest["frames"])};\n'
+        f'const artVersion = "{version}";\n'
         'export const priestlyFrames = {\n'
         '  pages: Array.from({length: count}, (_, i) => ({\n'
         '    src: `assets/bitpoly/priestly/frame-${String(i).padStart(3, "0")}.webp?v=${artVersion}`, width: 256, height: 286\n'
@@ -169,17 +125,11 @@ def main(source_path):
         '  frames: Array.from({length: count}, (_, page) => ({page, x: 0, y: 0})),\n'
         f'  clips: {json.dumps(manifest["clips"], separators=(",", ":"))}\n'
         '};\n', encoding='utf-8', newline='\n')
-    qa = ROOT / 'qa'
-    qa.mkdir(exist_ok=True)
-    sheet = Image.new('RGB', (WIDTH * 5, (HEIGHT + 23) * 2), '#332923')
-    labels = ImageDraw.Draw(sheet)
-    for i, (name, frame) in enumerate(examples):
-        x, y = (i % 5) * WIDTH, (i // 5) * (HEIGHT + 23)
-        sheet.paste(frame, (x, y), frame)
-        labels.text((x + 10, y + HEIGHT + 2), name, fill='#ffffff')
-    sheet.save(qa / 'priestly-contact.png')
-    print(f'{len(manifest["frames"])} full frames. Fixed ground from row {GROUND_ROW}.')
 
 
 if __name__ == '__main__':
-    main(Path(sys.argv[1]))
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument('source', type=Path, nargs='?', default=SOURCE)
+    parser.add_argument('--blender', default='blender')
+    options = parser.parse_args()
+    build(options.blender, options.source)

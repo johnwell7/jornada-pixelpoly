@@ -1,12 +1,14 @@
 const fs=require('node:fs'),{spawn}=require('node:child_process');
 const path=require('node:path');
-const dir=path.join(process.cwd(),'dist/assets/bitpoly/motion');fs.mkdirSync(dir,{recursive:true});
+const [neutral='dist/assets/bitpoly/frames/frame-000.webp', output='dist/assets/bitpoly/motion', registration]=process.argv.slice(2);
+const dir=path.resolve(output);fs.mkdirSync(dir,{recursive:true});
+const ears=registration?JSON.parse(fs.readFileSync(registration,'utf8')).ears:[[31,91],[222,91]];
 const browser=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--no-sandbox','--disable-gpu','--remote-debugging-port=9337','--user-data-dir='+path.join(process.cwd(),'render-profile'),'about:blank'],{windowsHide:true,stdio:'ignore'});
 async function main(){
  let tabs;for(let n=0;n<50;n++){try{tabs=await(await fetch('http://127.0.0.1:9337/json')).json();break;}catch{await new Promise(r=>setTimeout(r,100));}}
  const ws=new WebSocket(tabs.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise(r=>ws.onopen=r);let serial=0;const pending=new Map();ws.onmessage=e=>{let d=JSON.parse(e.data);if(d.id){pending.get(d.id)(d);pending.delete(d.id);}};
  const call=(method,params)=>new Promise(resolve=>{const id=++serial;pending.set(id,resolve);ws.send(JSON.stringify({id,method,params}));});
- const source='data:image/webp;base64,'+fs.readFileSync('dist/assets/bitpoly/frames/frame-000.webp').toString('base64');
+ const source='data:image/webp;base64,'+fs.readFileSync(neutral).toString('base64');
  const expression=`(async()=>{
  const image=new Image();image.src=${JSON.stringify(source)};await image.decode();
  const c=document.createElement('canvas');c.width=256;c.height=286;const ctx=c.getContext('2d');ctx.drawImage(image,0,0);const src=ctx.getImageData(0,0,256,286).data;
@@ -21,8 +23,8 @@ async function main(){
     dx=(x-128)*.022*a*torso;dy=-3.4*a*support;
    }else if(kind==='perk'){dy=-2.8*a*(1-smooth((y-135)/80));}
    else{
-    const left=kind==='listenLeft',cx=left?31:222;
-    const weight=Math.exp(-(((x-cx)/30)**2)-((y-91)/19)**2)*support;
+    const left=kind==='listenLeft',[cx,cy]=${JSON.stringify(ears)}[left?0:1];
+    const weight=Math.exp(-(((x-cx)/30)**2)-((y-cy)/19)**2)*support;
     dx=(left?-1:1)*1.4*a*weight;dy=-5*a*weight;
    }
    const sx=x-dx,sy=y-dy,x0=Math.floor(sx),y0=Math.floor(sy),fx=sx-x0,fy=sy-y0;
@@ -43,7 +45,8 @@ async function main(){
  const response=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});
  if(response.result.exceptionDetails)throw Error(JSON.stringify(response.result.exceptionDetails));
  const result=response.result.result.value,frames=result.frames;for(const f of frames)fs.writeFileSync(path.join(dir,f.kind+'-'+String(f.n).padStart(2,'0')+'.png'),Buffer.from(f.data,'base64'));
- fs.mkdirSync('qa',{recursive:true});fs.writeFileSync('qa/motion-ground.json',JSON.stringify(result.qa,null,2));fs.writeFileSync('qa/motion-contact.png',Buffer.from(result.sheet,'base64'));console.log(result.qa);
+ const qa=registration?dir:'qa';
+ fs.mkdirSync(qa,{recursive:true});fs.writeFileSync(path.join(qa,'motion-ground.json'),JSON.stringify(result.qa,null,2));fs.writeFileSync(path.join(qa,'motion-contact.png'),Buffer.from(result.sheet,'base64'));console.log(result.qa);
  console.log('Generated',frames.length,'complete frames');ws.close();browser.kill();
 }
 main().catch(e=>{console.error(e);browser.kill();process.exitCode=1;});
