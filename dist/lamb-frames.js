@@ -1,9 +1,16 @@
 import {lambFrames} from './lamb-frames-data.js';
+import {priestlyFrames} from './priestly-frames-data.js';
+
+export const PRIESTLY_OUTFIT = 'vestes-sacerdotais';
+export function frameManifestFor(outfit) {
+ return outfit === PRIESTLY_OUTFIT ? priestlyFrames : lambFrames;
+}
 // Complete RGBA sprites only. No head/torso/paw masks, scales or mesh at runtime.
 let spriteSerial=0;
 export function fullLambSprite(manifest=lambFrames){
  const p=manifest.pages[0],id=`complete-frame-${++spriteSerial}`;
- return `<defs><clipPath id="${id}"><rect x="110" y="0" width="1085" height="1210"/></clipPath></defs><g data-lamb-frame-viewport="" clip-path="url(#${id})"><image data-lamb-frame-image="" href="${p.src}" x="110" y="0" width="${p.width*1085/256}" height="${p.height*1210/286}"/></g>`;
+ const outfit=manifest===priestlyFrames?` data-lamb-outfit="${PRIESTLY_OUTFIT}"`:'';
+ return `<defs><clipPath id="${id}"><rect x="110" y="0" width="1085" height="1210"/></clipPath></defs><g data-lamb-frame-viewport=""${outfit} clip-path="url(#${id})"><image data-lamb-frame-image="" href="${p.src}" x="110" y="0" width="${p.width*1085/256}" height="${p.height*1210/286}"/></g>`;
 }
 export function returnToNeutral(index,manifest=lambFrames){
  const clip=Object.values(manifest.clips).find(frames=>frames.includes(index));
@@ -32,14 +39,19 @@ function preload(manifest){
  }
  return assetCache.get(manifest).promise;
 }
-export function animateFullLamb(lamb,{studying=false,random=Math.random,manifest=lambFrames}={}){
+// Each reaction samples its side, range, tempo and pause independently.
+export function randomEarReaction(random=Math.random){
+ return {side:random()<.5?'listenLeft':'listenRight',depth:.55+random()*.45,fps:24+random()*24,hold:40+random()*320};
+}
+export function animateFullLamb(lamb,{studying=false,random=Math.random,manifest}={}){
  const viewport=lamb.querySelector('[data-lamb-frame-viewport]');
+ manifest ??= frameManifestFor(viewport?.dataset?.lambOutfit);
  const picture=lamb.querySelector('[data-lamb-frame-image]');
  const media=matchMedia('(prefers-reduced-motion: reduce)');
  lamb.classList.add('bitpoly-motion');
  let disposed=false,ready=false,raf=0,index=0,page=-1,geometry='',clock=0,last=null,idle=0;
- let active=null,pending=null,breathStart=0,nextBlink=2100,nextTilt=6500,sleeping=false,sleepStart=0;
- const sleepDelay=studying?14000:30000;
+ let active=null,pending=null,breathStart=0,nextBlink=2100,nextTilt=5000+random()*9000,nextEar=1800+random()*7500,sleeping=false,sleepStart=0;
+ const sleepDelay=studying?14000:20000;
  const neutralize=()=>returnToNeutral(index,manifest).slice(1).map(frame=>({frame,ms:1000/60}));
  function display(next){
   if(next===index&&page>=0)return;
@@ -56,14 +68,16 @@ export function animateFullLamb(lamb,{studying=false,random=Math.random,manifest
  function begin(kind){
   // Traversing authored frames back to neutral avoids snapping on rapid touches.
   const intro=neutralize();
-  const seq=(name,fps=30,hold=0)=>{
-   const clip=manifest.clips[name]||manifest.clips.pet;
+  const seq=(name,fps=30,hold=0,depth=1)=>{
+   const source=manifest.clips[name]||manifest.clips.pet;
+   const clip=source.slice(0,Math.max(2,Math.ceil(source.length*depth)));
    return [...clip.map(frame=>({frame,ms:1000/fps})),...(hold?[{frame:clip.at(-1),ms:hold}]:[]),...clip.slice(0,-1).reverse().map(frame=>({frame,ms:1000/fps})),{frame:0,ms:1000/fps}];
   };
+  const ear=()=>{const r=randomEarReaction(random);return seq(r.side,r.fps,r.hold,r.depth);};
   const bodies={
-   listen:()=>seq(random()<.5?'listenLeft':'listenRight',30,220),
+   listen:ear,
    curious:()=>[...seq(random()<.5?'left':'right',30,300),...seq('perk',30,120)],
-   alert:()=>[...seq('listenLeft',40,100),...seq('listenRight',40,100)],
+   alert:()=>ear(),
    wake:()=>[...seq('perk',45,180),...seq('blink',60)],
    content:()=>seq('pet',24,320),
    doze:()=>manifest.clips.blink.map(frame=>({frame,ms:65}))
@@ -102,8 +116,9 @@ export function animateFullLamb(lamb,{studying=false,random=Math.random,manifest
   lamb.dataset.bpState='awake';
   // Blink at a neutral breath point; no jump from expanded torso to neutral.
   const breath=sampleBreath(clock-breathStart,manifest);display(breath);
-  if(breath<=1&&clock>=nextBlink){nextBlink=clock+2600+random()*1800;begin('blink');}
-  else if(breath<=1&&clock>=nextTilt){nextTilt=clock+(studying?9500:5000)+random()*3500;begin(['listen','curious','alert'][Math.floor(random()*3)]);}
+  if(clock>=nextEar){nextEar=clock+2500+random()*11000;begin('listen');}
+  else if(breath<=1&&clock>=nextBlink){nextBlink=clock+2600+random()*1800;begin('blink');}
+  else if(breath<=1&&clock>=nextTilt){nextTilt=clock+6000+random()*13000;begin('curious');}
  }
  function tick(now){
   if(disposed)return;

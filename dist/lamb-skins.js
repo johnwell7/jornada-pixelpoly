@@ -1,16 +1,3 @@
-const priestlySprite = 'assets/artifacts/vestes-sacerdotais/skin.png';
-const feet = 'M173 1120Q171 1052 215 1019Q258 986 316 1004Q376 1027 410 1119Q460 1251 390 1272L382 1312H180Z M1026 1120Q1028 1052 984 1019Q941 986 883 1004Q823 1027 789 1119Q739 1251 809 1272L817 1312H1019Z';
-const sleeves = [
-  'M190 786L353 733Q416 802 440 928L405 1072L306 1076L166 1030L119 924Z',
-  'M1009 786L846 733Q783 802 759 928L794 1072L893 1076L1033 1030L1080 924Z'
-];
-const torsoOutline = 'M98 491H186L365 467L361 531L382 590L469 662L593 682L720 661L800 591L819 533L816 467L1013 491H1101V1312H98Z';
-const headOutline = 'M230 240L390 116L474 16H680L787 113L936 182L949 311H896Q882 353 819 381L717 303L594 340L461 305L378 381Q305 363 282 314H230Z';
-
-const priestly = {id:'priest', sprite:priestlySprite, feet, sleeves, torsoOutline, headOutline,
-  bookCuffs:985, hem:'<path d="M246 1012Q595 1066 953 1012V1141L811 1186H388L246 1141Z" fill="#253b72"/>',
-  equipmentTransform:'translate(477 259) scale(.56)'};
-
 const joseph = {
   id:'joseph',
   sprite:'assets/artifacts/tunica-de-jose/skin.png',
@@ -40,7 +27,7 @@ const david = {
 };
 
 function spriteSkin(rig, studying, skin) {
-  const {sprite, feet, sleeves, torsoOutline, headOutline, bookCuffs, hem, equipmentTransform} = skin;
+  const {sprite, feet, sleeves, torsoOutline, headOutline, bookCuffs, hem} = skin;
   // One registration for all regions in the supplied 1199×1312 sprite.
   const id = `${studying ? 'study' : 'home'}-${skin.id}`;
   const image = `<image href="${sprite}" width="1199" height="1312" aria-hidden="true"/>`;
@@ -77,22 +64,16 @@ function spriteSkin(rig, studying, skin) {
     .replace(/<g class="lamb-fleece">[\s\S]*?<\/g>/, torso)
     .replace(/<\/g>(\s*<g class="lamb-paws">)/, dressedHead + '</g>$1')
     .replace(/<g class="lamb-paws">[\s\S]*?(<\/g>\s*<\/svg>)$/,
-      (_, ending) => `<g class="lamb-paws">${grounded}</g>${ending}`)
-    // Place the medallion on the upper shoulder, clear of the breastplate.
-    .replace('<g class="lamb-equipment">', equipmentTransform
-      ? `<g class="lamb-equipment" transform="${equipmentTransform}">`
-      : '<g class="lamb-equipment">');
+      (_, ending) => `<g class="lamb-paws">${grounded}</g>${ending}`);
 }
 
 const skins = {
   default: rig => rig,
-  priestly_vestments: (rig, studying) => spriteSkin(rig, studying, priestly),
   joseph_tunic: (rig, studying) => spriteSkin(rig, studying, joseph),
   david_shepherd: (rig, studying) => spriteSkin(rig, studying, david)
 };
 
 const outfitSkins = {
-  'vestes-sacerdotais': 'priestly_vestments',
   'tunica-de-jose': 'joseph_tunic',
   'pequeno-pastor-de-davi': 'david_shepherd'
 };
@@ -100,3 +81,4 @@ const outfitSkins = {
 export function applyLambSkin(rig, outfit, studying = false) {
   return skins[outfitSkins[outfit] ?? 'default'](rig,studying);
 }
+

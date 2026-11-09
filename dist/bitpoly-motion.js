@@ -11,7 +11,7 @@ const rest=()=>({torsoY:0,torsoScale:1,headX:0,headY:0,headAngle:0,earLeft:0,ear
 export function sampleBitpolyPose(t,{idle=0,action='',actionAge=0,gazeX=0,gazeY=0,blink=0,reduced=false,studying=false}={}) {
   const p=rest();
   if(reduced)return p;
-  const sleepDelay=studying?BITPOLY_IDLE_MS:30000;
+  const sleepDelay=studying?BITPOLY_IDLE_MS:20000;
   const drowsy=smooth((idle-sleepDelay+800)/800);
   const breath=(Math.sin(t/3600*TAU-Math.PI/2)+1)/2;
   p.torsoScale=1+breath*(.013-drowsy*.004);
@@ -22,8 +22,7 @@ export function sampleBitpolyPose(t,{idle=0,action='',actionAge=0,gazeX=0,gazeY=
   p.eyeY=clamp(gazeY,-8,8)*(1-drowsy);
   p.eyeScale=Math.max(.055,(1-drowsy*.94)*(1-blink*.95));
   p.puff=drowsy>.98?(Math.sin(t/5200*TAU)+1)/2:0;
-  p.earLeft=Math.sin(t/7100*TAU)*.28;
-  p.earRight=Math.sin(t/8300*TAU+.9)*.32;
+  // Ears rest between independently scheduled reactions; no repeating sine loop.
   if(action){
     const a=clamp(actionAge/BITPOLY_ACTION_MS,0,1), envelope=Math.sin(a*Math.PI);
     switch(action){
@@ -36,6 +35,7 @@ export function sampleBitpolyPose(t,{idle=0,action='',actionAge=0,gazeX=0,gazeY=
       case 'lean':p.headAngle-=envelope*2.7;p.earRight-=envelope*3;break;
       case 'curious':p.headAngle+=envelope*1.8;p.earLeft+=envelope*4;p.eyeY-=envelope*5;break;
       case 'listen':p.earRight-=envelope*5;p.headAngle-=envelope*.9;break;
+      case 'listen-left':p.earLeft+=envelope*5;p.headAngle+=envelope*.7;break;
       case 'glance':p.eyeX+=envelope*8;p.headAngle+=envelope*.8;break;
       case 'snuffle':p.headY-=Math.sin(a*Math.PI*4)*envelope*2;break;
     }
@@ -55,17 +55,46 @@ function pivotTransform(node,angle=0,dx=0,dy=0,sx=1,sy=1){
   node.setAttribute('transform',`translate(${dx.toFixed(2)} ${dy.toFixed(2)}) translate(${x} ${y}) rotate(${angle.toFixed(3)}) scale(${sx.toFixed(4)} ${sy.toFixed(4)}) translate(${-x} ${-y})`);
 }
 
-export function animateBitpolyPlants(stage){
+// Finite gusts with independent waits. With multiple plants, at least one rests.
+export function createPlantWindTracks(plants,{random=Math.random}={}){
+  let clock=0,nextStart=0;
+  const tracks=plants.map((p,i)=>({...p,next:500+random()*5500+i*700,gust:null}));
+  const limit=Math.max(1,tracks.length-1);
+  return {step(dt){
+    clock+=Math.max(0,dt);
+    for(const t of tracks)if(t.gust&&clock>=t.gust.start+t.gust.duration+t.gust.lag*(t.joints-1)){
+      t.gust=null;t.next=clock+1500+random()*12000;
+    }
+    const ready=tracks.filter(t=>!t.gust&&t.next<=clock).sort((a,b)=>a.next-b.next);
+    if(clock>=nextStart&&tracks.filter(t=>t.gust).length<limit&&ready.length){
+      const t=ready[0];
+      t.gust={start:clock,duration:3800+random()*6500,lag:100+random()*200,strength:.45+random()*.55,direction:random()<.5?-1:1,phase:random()*TAU,speed:.7+random()*.8};
+      nextStart=clock+900+random()*2100;
+    }
+    return tracks.map(t=>Array.from({length:t.joints},(_,i)=>{
+      if(!t.gust)return 0;
+      const g=t.gust,age=clock-g.start-i*g.lag,u=age/g.duration;
+      if(u<=0||u>=1)return 0;
+      const envelope=Math.sin(Math.PI*u)**2;
+      const amplitude=t.kind==='floor'?2.25:t.kind==='shelf'?1.65:1.25;
+      return amplitude*g.strength*g.direction*envelope*(.7+.3*Math.sin(age/1700*g.speed+g.phase-i*.4));
+    }));
+  }};
+}
+
+export function animateBitpolyPlants(stage,{random=Math.random}={}){
   const media=matchMedia('(prefers-reduced-motion: reduce)');
-  const parts=[...stage.querySelectorAll('[data-bp-plant]')].flatMap(svg=>[...svg.querySelectorAll('[data-bp-part]')].map((node,i)=>({node,i,kind:svg.dataset.bpPlant})));
-  let frame=0,disposed=false;
-  function reset(){parts.forEach(({node})=>node.removeAttribute('transform'));}
+  const groups=[...stage.querySelectorAll('[data-bp-plant]')].map(svg=>({kind:svg.dataset.bpPlant,nodes:[...svg.querySelectorAll('[data-bp-part]')]}));
+  const wind=createPlantWindTracks(groups.map(g=>({kind:g.kind,joints:g.nodes.length})),{random});
+  let frame=0,disposed=false,last=null;
+  function reset(){groups.forEach(g=>g.nodes.forEach(node=>node.removeAttribute('transform')));}
   function tick(t){
     if(disposed)return;
-    if(!stage.closest('[inert]'))parts.forEach(({node,i,kind})=>pivotTransform(node,samplePlantJoint(t,i,kind)));
+    const dt=last===null?0:Math.min(100,Math.max(0,t-last));last=t;
+    if(!stage.closest('[inert]')){const poses=wind.step(dt);groups.forEach((g,j)=>g.nodes.forEach((node,i)=>pivotTransform(node,poses[j][i])));}
     frame=requestAnimationFrame(tick);
   }
-  function resume(){cancelAnimationFrame(frame);reset();if(!disposed&&!document.hidden&&!media.matches)frame=requestAnimationFrame(tick);}
+  function resume(){cancelAnimationFrame(frame);last=null;if(media.matches)reset();if(!disposed&&!document.hidden&&!media.matches)frame=requestAnimationFrame(tick);}
   document.addEventListener('visibilitychange',resume);media.addEventListener('change',resume);resume();
   return {dispose(){disposed=true;cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',resume);media.removeEventListener('change',resume);reset();}};
 }
@@ -86,22 +115,27 @@ export function animateBitpolyLamb(lamb,{studying=false,random=Math.random}={}){
     eyes:[...lamb.querySelectorAll('.eye')]
   }:null;
   let frame=0,lastActivity=performance.now(),action='',actionStart=0;
-  const sleepDelay=studying?14000:30000;
-  let blinkStart=0,nextBlink=performance.now()+2300+random()*2000,nextIdle=performance.now()+5000;
+  const sleepDelay=studying?14000:20000;
+  let blinkStart=0,nextBlink=performance.now()+2300+random()*2000,nextIdle=performance.now()+1800+random()*7500;
+  let reactionDuration=BITPOLY_ACTION_MS,reactionStrength=1;
   let gazeX=0,gazeY=0,lastPet=-1,lastPoint=null,travel=0,lastTouch=-Infinity,disposed=false;
   function wake(){lastActivity=performance.now();lamb.dataset.bpState='awake';}
-  function perform(name){wake();action=name;actionStart=performance.now();render(actionStart);}
+  function perform(name){wake();action=name;reactionDuration=BITPOLY_ACTION_MS;reactionStrength=1;actionStart=performance.now();render(actionStart);}
   function render(now){
     if(disposed)return;
     if(lamb.closest('[inert]')){lastActivity=now;return;}
     if(now>=nextBlink&&blinkStart===0){blinkStart=now;nextBlink=now+2900+random()*4200;}
     let blink=blinkStart?Math.sin(clamp((now-blinkStart)/140,0,1)*Math.PI):0;
     if(now-blinkStart>140)blinkStart=0;
-    if(action&&now-actionStart>BITPOLY_ACTION_MS)action='';
-    if(!action&&now>nextIdle&&now-lastActivity<BITPOLY_IDLE_MS){action=['listen','glance','snuffle'][Math.floor(random()*3)];actionStart=now;nextIdle=now+6500+random()*3500;}
+    if(action&&now-actionStart>reactionDuration)action='';
+    if(!action&&now>nextIdle&&now-lastActivity<sleepDelay-800){
+      action=['listen-left','listen','glance','snuffle'][Math.floor(random()*4)];actionStart=now;
+      reactionDuration=650+random()*1000;reactionStrength=.5+random()*.5;nextIdle=now+2500+random()*11000;
+    }
     if(!studying&&now-lastActivity>=sleepDelay+5000){wake();action='welcome-perk';actionStart=now;}
     const idle=now-lastActivity;
-    const p=sampleBitpolyPose(now,{idle,action,actionAge:now-actionStart,gazeX,gazeY,blink,reduced:media.matches,studying});
+    const p=sampleBitpolyPose(now,{idle,action,actionAge:(now-actionStart)*BITPOLY_ACTION_MS/reactionDuration,gazeX,gazeY,blink,reduced:media.matches,studying});
+    p.earLeft*=reactionStrength;p.earRight*=reactionStrength;
     lamb.dataset.bpState=idle>=sleepDelay?'sleeping':idle>=sleepDelay-800?'drowsy':'awake';
     if(parts.torso){
       pivotTransform(parts.torso,0,0,p.torsoY,1,p.torsoScale);

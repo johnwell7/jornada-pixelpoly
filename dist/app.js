@@ -1,5 +1,6 @@
 import {animateBitpolyLantern} from './bitpoly-lantern.js';
 import {applyLambSkin} from './lamb-skins.js';
+import {PRIESTLY_OUTFIT} from './lamb-frames.js';
 import {scrollInspection, toggleScroll} from './pentateuch.js';
 import {artifacts, artifactStatus, restoreArtifactDiscoveries} from './artifacts.js';
 import {satchelArt, satchelMark} from './satchel-art.js';
@@ -27,7 +28,9 @@ let artifactReaderReturn;
 const missionaryTag = artifacts.find(entry => entry.id === 'missionary-tag');
 
 function dressedSheep(studying = false) {
-  if (!state.outfit) return bitpolyLamb({equipped:state.equipped, tag:state.missionaryTagEquipped, studying});
+  if (!state.outfit || state.outfit === PRIESTLY_OUTFIT) {
+    return bitpolyLamb({equipped:state.equipped, tag:state.missionaryTagEquipped, studying, outfit:state.outfit});
+  }
   const drawing = applyLambSkin(sheep(state.equipped, studying), state.outfit, studying);
   if (studying) return drawing;
   if (!state.missionaryTagEquipped) return drawing;
@@ -417,4 +420,5 @@ panel.addEventListener('cancel',e=>{e.preventDefault();if(!scripture.dismissComp
 panel.addEventListener('click',e=>{if(e.target===panel){const r=panel.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closePanel();}});
 window.addEventListener('hashchange',()=>show(location.hash.slice(1)||'home',false));
 renderWorld();show(location.hash.slice(1)||'home',false,true);if(!storageOK)toast('Storage is unavailable. Export progress to keep it.');
+
 
