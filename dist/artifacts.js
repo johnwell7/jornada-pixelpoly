@@ -87,8 +87,8 @@ export const artifacts = [...catalog.map(entry => ({
       prompt: 'Observe o que o presente revela sobre a relação entre José e sua família.'
     },
     relatedScriptures: [['Gênesis 37:3–4','GEN,37,3,4']],
-    inventoryImage: 'assets/artifacts/tunica-de-jose/02_inventario.png',
-    presentation: 'assets/artifacts/tunica-de-jose/01_descoberta.png',
+    inventoryImage: 'assets/bitpoly/tunic/portrait.webp',
+    presentation: 'assets/bitpoly/tunic/portrait.webp',
     equipment: 'outfit'
   },
   {

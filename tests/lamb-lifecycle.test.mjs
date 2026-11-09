@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {animateFullLamb, PRIESTLY_OUTFIT, frameManifestFor} from '../dist/lamb-frames.js';
+import {animateFullLamb, PRIESTLY_OUTFIT, TUNIC_OUTFIT, frameManifestFor} from '../dist/lamb-frames.js';
+import {artifacts} from '../dist/artifacts.js';
 import {bitpolyLamb} from '../dist/bitpoly-art.js';
 import {existsSync} from 'node:fs';
 
@@ -25,15 +26,23 @@ test('lobby sleeps after 20 seconds, wakes after five seconds and gets a fresh a
  }finally{e.close();}
 });
 
-test('Aaron uses its own full frames throughout lobby and reading playback',async()=>{
- const outfit=PRIESTLY_OUTFIT,manifest=frameManifestFor(outfit);
+for (const [outfit, directory] of [[PRIESTLY_OUTFIT, 'priestly'], [TUNIC_OUTFIT, 'tunic']]) {
+test(`${outfit} uses full frames throughout lobby and reading playback`,async()=>{
+ const manifest=frameManifestFor(outfit);
  const home=bitpolyLamb({outfit,equipped:true,tag:true});
  const reader=bitpolyLamb({outfit,studying:true});
- assert.match(home,/data-lamb-outfit="vestes-sacerdotais"/);
+ assert.ok(home.includes(`data-lamb-outfit="${outfit}"`));
+ assert.ok(reader.includes(`data-lamb-outfit="${outfit}"`));
  assert.match(home,/liahona-inventory\.png/);
  assert.match(home,/missionary-tag-inventory\.png/);
  assert.doesNotMatch(home,/<mask|skin-sleeve/);
  assert.match(reader,/bp-reading-book.*translate\(196 364\)/);
+ const item=artifacts.find(artifact=>artifact.id===outfit);
+ const portrait=`assets/bitpoly/${directory}/portrait.webp`;
+ assert.equal(item.inventoryImage,portrait);
+ assert.equal(item.presentation,portrait);
+ assert.ok(existsSync(new URL('../dist/'+portrait,import.meta.url)));
+ assert.equal(manifest.pages.length,117);
  for(const page of manifest.pages)assert.ok(existsSync(new URL('../dist/'+page.src,import.meta.url)),page.src);
  for(const studying of [false,true]){
   const e=setup(studying,outfit);
@@ -48,10 +57,11 @@ test('Aaron uses its own full frames throughout lobby and reading playback',asyn
    e.document.dispatchEvent(new Event('pointerdown'));e.advance(1500);
    assert.equal(e.lamb.dataset.bpState,'awake');
    assert.ok(e.sources.has(manifest.pages[manifest.clips.perk.at(-1)].src));
-   assert.ok([...e.sources].every(src=>src.startsWith('assets/bitpoly/priestly/')));
+   assert.ok([...e.sources].every(src=>src.startsWith(`assets/bitpoly/${directory}/`)));
   }finally{e.close();}
  }
 });
+}
 test('reading sleeps after 14 seconds, stays asleep and wakes on screen interaction',async()=>{
  const e=setup(true);try{
   await new Promise(r=>setImmediate(r));e.advance(13900);assert.equal(e.lamb.dataset.bpState,'awake');

@@ -1,4 +1,4 @@
-import {fullLambSprite, frameManifestFor, PRIESTLY_OUTFIT} from './lamb-frames.js';
+import {fullLambSprite, frameManifestFor, hasAnimatedOutfit, PRIESTLY_OUTFIT, TUNIC_OUTFIT} from './lamb-frames.js';
 // Plants retain articulated stems; the default lamb uses complete rendered frames.
 let serial = 0;
 export const bitpolyAssets = Object.freeze({
@@ -51,12 +51,16 @@ export function bitpolyPlants() {
 }
 
 export function bitpolyLamb({equipped=false, tag=false, studying=false, outfit}={}) {
-  const priestly = outfit === PRIESTLY_OUTFIT;
+  const dressed = hasAnimatedOutfit(outfit);
   const equipment=`${equipped?`<image href="assets/artifacts/liahona-inventory.png" x="728" y="717" width="138" height="150"/>`:''}${tag?`<image href="assets/artifacts/missionary-tag-inventory.png" x="438" y="747" width="151" height="109" transform="rotate(-8 513 800)"/>`:''}`;
-  const priestlyEquipment = `${equipped?'<image href="assets/artifacts/liahona-inventory.png" x="818" y="718" width="89" height="97"/>':''}${tag?'<image href="assets/artifacts/missionary-tag-inventory.png" x="400" y="721" width="107" height="77" transform="rotate(-8 454 760)"/>':''}`;
+  const compactEquipment = `${equipped?'<image href="assets/artifacts/liahona-inventory.png" x="818" y="718" width="89" height="97"/>':''}${tag?'<image href="assets/artifacts/missionary-tag-inventory.png" x="400" y="721" width="107" height="77" transform="rotate(-8 454 760)"/>':''}`;
   const book=studying?`<g class="bp-reading-book"><path d="M400 817L652 866L911 817L899 1027L652 1083L412 1027Z" fill="#663219" stroke="#d88b35" stroke-width="10"/><path d="M406 814Q529 790 652 853Q779 790 904 814L888 837Q767 817 652 880Q535 817 421 837Z" fill="#ffe1a0"/><path d="M652 880V1080" stroke="#b36b2f" stroke-width="13"/><path d="M818 917L830 948L861 955L833 969L824 1000L812 970L781 960L808 946Z" fill="#e9af4d"/></g>`:'';
-  const readingBook = priestly ? book.replace('class="bp-reading-book"', 'class="bp-reading-book" transform="translate(196 364) scale(.7)"') : book;
-  return `<svg class="bitpoly-lamb" data-bp-rig="frames" viewBox="110 0 1085 1210" role="img" aria-label="${studying?'Ovelha lendo':priestly?'Ovelha com as vestes sacerdotais de Arão':'Ovelha Pixel-Poly'}">${fullLambSprite(frameManifestFor(outfit))}${priestly?priestlyEquipment:equipment}${readingBook}</svg>`;
+  const readingBook = dressed ? book.replace('class="bp-reading-book"', 'class="bp-reading-book" transform="translate(196 364) scale(.7)"') : book;
+  const labels = {
+    [PRIESTLY_OUTFIT]: 'Ovelha com as vestes sacerdotais de Arão',
+    [TUNIC_OUTFIT]: 'Ovelha com a túnica de José'
+  };
+  return `<svg class="bitpoly-lamb" data-bp-rig="frames" viewBox="110 0 1085 1210" role="img" aria-label="${studying?'Ovelha lendo':labels[outfit]??'Ovelha Pixel-Poly'}">${fullLambSprite(frameManifestFor(outfit))}${dressed?compactEquipment:equipment}${readingBook}</svg>`;
 }
 
 

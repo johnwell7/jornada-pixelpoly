@@ -1,6 +1,6 @@
 import {animateBitpolyLantern} from './bitpoly-lantern.js';
 import {applyLambSkin} from './lamb-skins.js';
-import {PRIESTLY_OUTFIT} from './lamb-frames.js';
+import {hasAnimatedOutfit} from './lamb-frames.js';
 import {scrollInspection, toggleScroll} from './pentateuch.js';
 import {artifacts, artifactStatus, restoreArtifactDiscoveries} from './artifacts.js';
 import {satchelArt, satchelMark} from './satchel-art.js';
@@ -28,7 +28,7 @@ let artifactReaderReturn;
 const missionaryTag = artifacts.find(entry => entry.id === 'missionary-tag');
 
 function dressedSheep(studying = false) {
-  if (!state.outfit || state.outfit === PRIESTLY_OUTFIT) {
+  if (!state.outfit || hasAnimatedOutfit(state.outfit)) {
     return bitpolyLamb({equipped:state.equipped, tag:state.missionaryTagEquipped, studying, outfit:state.outfit});
   }
   const drawing = applyLambSkin(sheep(state.equipped, studying), state.outfit, studying);
