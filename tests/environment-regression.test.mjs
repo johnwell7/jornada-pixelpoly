@@ -110,7 +110,7 @@ test('active app uses the new controllers and restarts them when changing outfit
   assert.ok(!app.includes("from './sheep-motion.js'"));
   assert.ok(app.includes('plantMotion?.dispose()'));
   assert.ok(app.includes('sheepMotion = animateBitpolyLamb(world.querySelector'));
-  assert.ok(app.includes('if (!state.outfit) return bitpolyLamb'));
+  assert.ok(app.includes('if (!state.outfit || state.outfit === PRIESTLY_OUTFIT)'));
   assert.ok(app.includes('${bitpolyPlants()}'));
 });
 
