@@ -20,7 +20,7 @@ GROUND_ROW = 225
 OUTFITS = {
     'priestly': ('priestlyFrames', (336, 530), 638, 29, 46, (121, 742), 592),
     'tunic': ('tunicFrames', (334, 528), 615, 29, 46, (120, 742), 575),
-    'david': ('davidFrames', (474, 706), 426, 39, 55, (168, 1006), 386),
+    'david': ('davidFrames', (478, 697), 473, 34, 50, (226, 947), 432),
 }
 
 

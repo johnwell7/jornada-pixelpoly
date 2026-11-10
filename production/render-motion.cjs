@@ -3,7 +3,7 @@ const path=require('node:path');
 const [neutral='dist/assets/bitpoly/frames/frame-000.webp', output='dist/assets/bitpoly/motion', registration]=process.argv.slice(2);
 const dir=path.resolve(output);fs.mkdirSync(dir,{recursive:true});
 const ears=registration?JSON.parse(fs.readFileSync(registration,'utf8')).ears:[[31,91],[222,91]];
-const browser=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--no-sandbox','--disable-gpu','--remote-debugging-port=9337','--user-data-dir='+path.join(process.cwd(),'render-profile'),'about:blank'],{windowsHide:true,stdio:'ignore'});
+const browser=spawn(process.env.JORNADA_CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--no-sandbox','--disable-gpu','--remote-debugging-port=9337','--user-data-dir='+path.join(process.cwd(),'render-profile'),'about:blank'],{windowsHide:true,stdio:'ignore'});
 async function main(){
  let tabs;for(let n=0;n<50;n++){try{tabs=await(await fetch('http://127.0.0.1:9337/json')).json();break;}catch{await new Promise(r=>setTimeout(r,100));}}
  const ws=new WebSocket(tabs.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise(r=>ws.onopen=r);let serial=0;const pending=new Map();ws.onmessage=e=>{let d=JSON.parse(e.data);if(d.id){pending.get(d.id)(d);pending.delete(d.id);}};
