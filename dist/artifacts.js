@@ -103,8 +103,8 @@ export const artifacts = [...catalog.map(entry => ({
       prompt: 'Observe como Davi relaciona o cuidado com as ovelhas ao desafio que estava diante dele.'
     },
     relatedScriptures: [['1 Samuel 17:34–37','1SA,17,34,37']],
-    inventoryImage: 'assets/artifacts/pequeno-pastor-de-davi/skin.png',
-    presentation: 'assets/artifacts/pequeno-pastor-de-davi/skin.png',
+    inventoryImage: 'assets/bitpoly/david/portrait.webp',
+    presentation: 'assets/bitpoly/david/portrait.webp',
     equipment: 'outfit'
   }
 ];

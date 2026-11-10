@@ -18,29 +18,49 @@ ROOT = Path(__file__).resolve().parents[1]
 WIDTH, HEIGHT = 256, 286
 GROUND_ROW = 225
 OUTFITS = {
-    'priestly': ('priestlyFrames', (336, 530), 638, (121, 742), 592),
-    'tunic': ('tunicFrames', (334, 528), 615, (120, 742), 575),
+    'priestly': ('priestlyFrames', (336, 530), 638, 29, 46, (121, 742), 592),
+    'tunic': ('tunicFrames', (334, 528), 615, 29, 46, (120, 742), 575),
+    'david': ('davidFrames', (474, 706), 426, 39, 55, (168, 1006), 386),
 }
 
 
 def prepare(source_path, staging, standard_neutral, outfit):
-    original = Image.open(source_path).convert('RGB')
-    if original.size != (864, 1536):
-        raise ValueError('This registration expects the supplied 864 × 1536 artwork.')
-    pixels = np.asarray(original)
-    brightness = pixels.max(axis=2)
-    boundary = Image.fromarray(np.where(brightness > 20, 255, 0).astype(np.uint8)).copy()
-    ImageDraw.floodfill(boundary, (0, 0), 128)
-    silhouette = boundary.point(lambda value: 0 if value == 128 else 255)
+    with Image.open(source_path) as source:
+        texture = source.convert('RGBA')
+    pixels = np.asarray(texture)[:, :, :3]
+    if texture.getchannel('A').getextrema()[0] < 255:
+        alpha = texture.getchannel('A')
+        # Keep the supplied alpha in and around the silhouette, removing stray
+        # nearly transparent specks outside it. The original RGB is untouched.
+        silhouette = alpha.point(lambda value: 255 if value >= 64 else 0)
+        nearby = np.asarray(silhouette.filter(ImageFilter.MaxFilter(7))) > 0
+        texture.putalpha(Image.fromarray(np.where(nearby, np.asarray(alpha), 0)))
+    else:
+        if texture.size != (864, 1536):
+            raise ValueError('The legacy black-background outfits expect 864 × 1536 artwork.')
+        brightness = pixels.max(axis=2)
+        if outfit == 'priestly':
+            # The left wool and cloak have a dark red glow baked into the black
+            # matte. Key that area more firmly, without eating dark feet or fabric.
+            y, x = np.ogrid[:texture.height, :texture.width]
+            left_glow = np.clip((240 - x) / 45, 0, 1) * np.clip((y - 560) / 45, 0, 1)
+            left_glow = left_glow * np.clip((1005 - y) / 70, 0, 1)
+            cutoff = 38 + 48 * left_glow
+            ramp = np.clip((brightness - cutoff + 10) / 24, 0, 1)
+        else:
+            cutoff = 20
+            ramp = np.clip((brightness.astype(float) - 7) / 27, 0, 1)
+        boundary = Image.fromarray(np.where(brightness > cutoff, 255, 0).astype(np.uint8)).copy()
+        ImageDraw.floodfill(boundary, (0, 0), 128)
+        silhouette = boundary.point(lambda value: 0 if value == 128 else 255)
+        interior = np.asarray(silhouette.filter(ImageFilter.MinFilter(3))) > 0
+        edge = np.asarray(silhouette.filter(ImageFilter.MaxFilter(3))) > 0
+        alpha = np.where(interior, 255, np.where(edge, ramp * 255, 0))
+        texture.putalpha(Image.fromarray(np.rint(alpha).astype(np.uint8)))
+
     bounds = silhouette.getbbox()
-    if not bounds or bounds[0] == 0 or bounds[1] == 0 or bounds[2] == original.width or bounds[3] == original.height:
-        raise ValueError('The source silhouette must be isolated from the black canvas.')
-    # Preserve source RGB and soften alpha only on the one-pixel outer edge.
-    interior = np.asarray(silhouette.filter(ImageFilter.MinFilter(3))) > 0
-    edge = np.asarray(silhouette.filter(ImageFilter.MaxFilter(3))) > 0
-    alpha = np.where(interior, 255, np.where(edge, np.clip((brightness.astype(float)-7)/27, 0, 1)*255, 0))
-    texture = original.convert('RGBA')
-    texture.putalpha(Image.fromarray(np.rint(alpha).astype(np.uint8)))
+    if not bounds:
+        raise ValueError('No foreground silhouette found.')
     texture_path = staging / 'texture.png'
     texture.save(texture_path)
 
@@ -52,12 +72,12 @@ def prepare(source_path, staging, standard_neutral, outfit):
     offset_y = bottom - y1 * scale
     # Camera coordinates come from render_sprites.py and remain shared with the default skin.
     placement = [110 + offset_x*1085/WIDTH, offset_y*1210/HEIGHT, scale*1085/WIDTH, scale*1210/HEIGHT]
-    _, eye_x, eye_y, ear_x, ear_y = OUTFITS[outfit]
-    eyes = [[x, eye_y, 29, 46, bytes(pixels[eye_y, x+34]).hex()] for x in eye_x]
+    _, eye_x, eye_y, eye_rx, eye_ry, ear_x, ear_y = OUTFITS[outfit]
+    eyes = [[x, eye_y, eye_rx, eye_ry, bytes(pixels[eye_y, x+eye_rx+5]).hex()] for x in eye_x]
     ears = [[offset_x + x*scale, offset_y + ear_y*scale] for x in ear_x]
     registration = staging / 'registration.json'
     registration.write_text(json.dumps({
-        'size': original.size, 'texture': str(texture_path), 'output': str(staging / 'blender'),
+        'size': texture.size, 'texture': str(texture_path), 'output': str(staging / 'blender'),
         'placement': placement, 'eyes': eyes, 'ears': ears,
     }))
     return registration, texture.crop(texture.getbbox())
@@ -105,7 +125,7 @@ def build(blender, source_path, outfit):
                     examples.append((clip if index else 'neutral', frame))
 
         portrait.save(output / 'portrait.webp', lossless=True, method=4)
-        write_manifest(manifest, sha256(source_path.read_bytes()).hexdigest()[:12], outfit)
+        write_manifest(manifest, sha256(source_path.read_bytes() + Path(__file__).read_bytes()).hexdigest()[:12], outfit)
         sheet = Image.new('RGB', (WIDTH*5, (HEIGHT+22)*2), '#3b302a')
         labels = ImageDraw.Draw(sheet)
         for i, (label, frame) in enumerate(examples):
@@ -136,5 +156,6 @@ if __name__ == '__main__':
     parser.add_argument('--outfit', choices=OUTFITS, default='priestly')
     parser.add_argument('--blender', default='blender')
     options = parser.parse_args()
-    source = options.source or ROOT / 'reference' / f'{options.outfit}-original.jpg'
+    extension = 'png' if options.outfit == 'david' else 'jpg'
+    source = options.source or ROOT / 'reference' / f'{options.outfit}-original.{extension}'
     build(options.blender, source, options.outfit)

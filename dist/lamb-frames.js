@@ -1,10 +1,16 @@
 import {lambFrames} from './lamb-frames-data.js';
 import {priestlyFrames} from './priestly-frames-data.js';
 import {tunicFrames} from './tunic-frames-data.js';
+import {davidFrames} from './david-frames-data.js';
 
 export const PRIESTLY_OUTFIT = 'vestes-sacerdotais';
 export const TUNIC_OUTFIT = 'tunica-de-jose';
-const outfitFrames = new Map([[PRIESTLY_OUTFIT, priestlyFrames], [TUNIC_OUTFIT, tunicFrames]]);
+export const DAVID_OUTFIT = 'pequeno-pastor-de-davi';
+const outfitFrames = new Map([
+ [PRIESTLY_OUTFIT, priestlyFrames],
+ [TUNIC_OUTFIT, tunicFrames],
+ [DAVID_OUTFIT, davidFrames]
+]);
 export function hasAnimatedOutfit(outfit) {
  return outfitFrames.has(outfit);
 }

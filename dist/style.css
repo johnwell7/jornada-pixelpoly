@@ -1351,7 +1351,7 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 .bp-window-vine { left: -4.5%; top: 8.3%; width: 19%; }
 .bp-shelf-plant { left: 28.8%; top: 25.4%; width: 16%; }
 .bp-floor-plant { left: 0; top: 53.8%; width: 23%; }
-/* Native picture texture and independent SVG joints, with no scene blur or recoloring. */
+/* Native texture and independent SVG joints. */
 .bitpoly-lamb image, .bp-plant image { image-rendering: auto; }
 .bitpoly-motion, .bitpoly-motion * { animation: none !important; transition: none !important; }
 .bitpoly-motion .lamb-gaze { transform: none !important; }
@@ -1380,3 +1380,12 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 .bp-lantern svg { display: block; width: 100%; height: auto; overflow: visible; }
 .bp-lantern-halo { position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: .14;
   background: radial-gradient(ellipse 10% 9% at 71.3% 50.5%,#ffb53b66,transparent 85%); }
+
+/* Match the room artwork and the sharper animated props at the same depth.
+   Keep the lamb, shadow, UI and interactive targets outside these filters. */
+.sunset-home .stage > picture > .room {
+  filter: blur(clamp(.35px, .11vw, .65px));
+}
+.sunset-home :is(.bp-plant, .bp-lantern) {
+  filter: blur(clamp(.45px, .14vw, .8px));
+}

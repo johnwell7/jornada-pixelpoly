@@ -1,4 +1,4 @@
-import {fullLambSprite, frameManifestFor, hasAnimatedOutfit, PRIESTLY_OUTFIT, TUNIC_OUTFIT} from './lamb-frames.js';
+import {fullLambSprite, frameManifestFor, hasAnimatedOutfit, PRIESTLY_OUTFIT, TUNIC_OUTFIT, DAVID_OUTFIT} from './lamb-frames.js';
 // Plants retain articulated stems; the default lamb uses complete rendered frames.
 let serial = 0;
 export const bitpolyAssets = Object.freeze({
@@ -58,7 +58,8 @@ export function bitpolyLamb({equipped=false, tag=false, studying=false, outfit}=
   const readingBook = dressed ? book.replace('class="bp-reading-book"', 'class="bp-reading-book" transform="translate(196 364) scale(.7)"') : book;
   const labels = {
     [PRIESTLY_OUTFIT]: 'Ovelha com as vestes sacerdotais de Arão',
-    [TUNIC_OUTFIT]: 'Ovelha com a túnica de José'
+    [TUNIC_OUTFIT]: 'Ovelha com a túnica de José',
+    [DAVID_OUTFIT]: 'Ovelha com o traje do pequeno pastor de Davi'
   };
   return `<svg class="bitpoly-lamb" data-bp-rig="frames" viewBox="110 0 1085 1210" role="img" aria-label="${studying?'Ovelha lendo':labels[outfit]??'Ovelha Pixel-Poly'}">${fullLambSprite(frameManifestFor(outfit))}${dressed?compactEquipment:equipment}${readingBook}</svg>`;
 }

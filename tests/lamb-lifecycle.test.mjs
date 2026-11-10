@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {animateFullLamb, PRIESTLY_OUTFIT, TUNIC_OUTFIT, frameManifestFor} from '../dist/lamb-frames.js';
+import {animateFullLamb, PRIESTLY_OUTFIT, TUNIC_OUTFIT, DAVID_OUTFIT, frameManifestFor} from '../dist/lamb-frames.js';
 import {artifacts} from '../dist/artifacts.js';
 import {bitpolyLamb} from '../dist/bitpoly-art.js';
 import {existsSync} from 'node:fs';
@@ -26,7 +26,7 @@ test('lobby sleeps after 20 seconds, wakes after five seconds and gets a fresh a
  }finally{e.close();}
 });
 
-for (const [outfit, directory] of [[PRIESTLY_OUTFIT, 'priestly'], [TUNIC_OUTFIT, 'tunic']]) {
+for (const [outfit, directory] of [[PRIESTLY_OUTFIT, 'priestly'], [TUNIC_OUTFIT, 'tunic'], [DAVID_OUTFIT, 'david']]) {
 test(`${outfit} uses full frames throughout lobby and reading playback`,async()=>{
  const manifest=frameManifestFor(outfit);
  const home=bitpolyLamb({outfit,equipped:true,tag:true});
