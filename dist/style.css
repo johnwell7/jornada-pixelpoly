@@ -502,33 +502,25 @@ dialog{position:fixed;max-width:none;max-height:none;width:min(480px,calc(100% -
 .chapter-history { list-style: none; padding: 0; display: grid; gap: 6px; }
 .journey-progress .button-row { margin-bottom: 10px; }
 
-/* The lamb is attached to the reader frame, outside the chapter scroller. */
-dialog:is(.panel-reader,.panel-discoveries,.panel-guided) {
-  --reader-perch: clamp(78px, 14dvh, 116px);
+/* The lamb sits on the painted gold rim, which starts 15% down the transparent cap. */
+#panel.has-reading-lamb {
+  --reader-perch: clamp(66px, 12dvh, 104px);
   --reader-top: calc(var(--reader-perch) + env(safe-area-inset-top) + 8px);
   --reader-bottom: calc(10px + env(safe-area-inset-bottom));
-  inset-block-start: var(--reader-top);
-  inset-block-end: 0;
+  inset-block: var(--reader-top) 0;
   margin-block-end: var(--reader-bottom);
-  overflow: visible;
 }
-:is(.panel-reader,.panel-discoveries,.panel-guided) #panel-content {
+#panel.has-reading-lamb #panel-content {
   max-height: min(820px, calc(100dvh - var(--reader-top) - var(--reader-bottom) - 2px));
 }
-:is(.panel-reader,.panel-discoveries,.panel-guided) .panel-header {
-  padding: 8px 12px;
-  border-radius: inherit;
-}
-:is(.panel-reader,.panel-discoveries,.panel-guided) .panel-header h2 { margin-block: 1px 0; }
-.panel-reader .panel-scroll { padding-top: 12px; border-radius: 0 0 24px 24px; }
 .panel-reader .scripture-ui { gap: 9px; }
 .reader-perch {
-  position: absolute; z-index: 1; inset-block-end: calc(100% - 2px);
-  inset-inline: 10px clamp(14px, 5vw, 42px);
+  position: absolute; z-index: 2; inset-block-end: calc(85% - var(--reader-perch) * .045 - 2px);
+  inset-inline: 10px 10%;
   display: flex; flex-direction: row-reverse; align-items: end; gap: 8px;
   pointer-events: none;
 }
-.reader-perch > * { pointer-events: auto; }
+.reader-perch :is(button,aside) { pointer-events: auto; }
 .reader-lamb-art {
   position: relative; display: block; flex: none; padding: 0; border: 0; background: transparent; cursor: pointer;
   border-radius: 16px; touch-action: manipulation;
@@ -563,7 +555,7 @@ dialog:is(.panel-reader,.panel-discoveries,.panel-guided) {
   dialog.panel-reader { width: min(660px,calc(100% - 32px)); margin-block-end: auto; }
 }
 @media (max-height: 460px) {
-  dialog:is(.panel-reader,.panel-discoveries,.panel-guided) { --reader-perch: clamp(55px, 18dvh, 82px); }
+  #panel.has-reading-lamb { --reader-perch: clamp(45px, 14dvh, 64px); }
 }
 @media (prefers-reduced-motion: no-preference) {
   .reader-lamb-art .lamb-head { transform: translateY(7px) rotate(-1.8deg); }
@@ -787,7 +779,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
     linear-gradient(90deg, #8b60374a, #f9ebcd 9px, transparent 20px, transparent calc(100% - 10px), #b8885842),
     linear-gradient(135deg, #fff5de, #f8e8ca 60%, #f2dfbb);
 }
-#panel:is(.panel-reader,.panel-guided,.panel-discoveries) .reader-perch { z-index: 2; }
 #panel .lamb-comment { background: #fff1d7; border-color: #b88754; }
 #panel:is(.panel-inventory,.panel-item,.panel-inspect,.panel-discover) .panel-header {
   background: var(--panel-leather);
@@ -1017,7 +1008,7 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
   border-radius: 0; background: transparent; font-family: Georgia,serif; box-shadow: none;
 }
 #panel.codex-panel::backdrop { background: #28130d80; backdrop-filter: blur(4px); }
-#panel.codex-panel:not(:is(.panel-reader,.panel-guided,.panel-discoveries)) #panel-content {
+#panel.codex-panel:not(.has-reading-lamb) #panel-content {
   max-height: min(850px,calc(100dvh - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
 }
 #panel.codex-panel:is(.panel-item,.panel-inspect) #panel-content {
@@ -1026,7 +1017,7 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 #panel.codex-panel .panel-header {
   position: relative; z-index: 1; display: grid; place-items: center;
   box-sizing: border-box; min-height: var(--codex-cap); padding: clamp(31px,10.8cqw,68px) 25% clamp(18px,6cqw,35px);
-  color: #ffe5ac; text-align: center; border: 0; border-radius: 0;
+  color: #ffe5ac; text-align: center; border: 0; border-radius: 0; box-shadow: none;
   background: url("assets/codex/scripture-cap.webp") center / 100% 100% no-repeat;
 }
 #panel.codex-panel .panel-header > .panel-symbol { display: none; }
@@ -1034,6 +1025,9 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 #panel.codex-panel .panel-header h2 {
   margin: 0; font-size: clamp(1.25rem,6.65cqw,2.75rem); font-weight: 700;
   line-height: 1.02; overflow-wrap: anywhere; text-shadow: none;
+}
+#panel.has-reading-lamb:not(.panel-reader) .panel-header h2 {
+  font-size: clamp(1.05rem,5.15cqw,2.2rem); text-wrap: balance;
 }
 #panel.codex-panel .panel-header .eyebrow {
   font: 700 clamp(.58rem,2.45cqw,1rem)/1.2 Georgia,serif;
@@ -1089,8 +1083,15 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
   color: #65402a; font: italic clamp(.85rem,3.5vw,1.15rem) Georgia,serif; text-align: center;
 }
 #panel.codex-panel .codex-chapter-nav {
-  display: flex; gap: 5px; padding-block: 13px clamp(20px,5.6vw,33px); margin: 3px 0;
-  background: url("assets/codex/rule.webp") center bottom / 100% auto no-repeat;
+  position: relative; display: flex; gap: 5px;
+  padding-block: 13px clamp(20px,5.6vw,33px); margin: 3px 0;
+  background: linear-gradient(90deg,#9c592728,#9c5927 18% 82%,#9c592728) center bottom 6px / 100% 2px no-repeat;
+}
+#panel.codex-panel .codex-chapter-nav::after {
+  content: ""; position: absolute; bottom: 2px; left: calc(50% - 6px);
+  width: 12px; height: 12px; pointer-events: none;
+  clip-path: polygon(50% 0,100% 50%,50% 100%,0 50%);
+  background: linear-gradient(135deg,#ffe9a5,#efa842 55%,#a05a25 56%);
 }
 #panel.codex-panel .codex-chapter-nav > .button { min-width: 0; padding: 8px 4px; }
 #panel.codex-panel .reader-text .verse-row {

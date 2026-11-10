@@ -90,14 +90,7 @@ export function scriptureUI({getState, save, show, shell, esc, completed, portra
       const next = chapter < books[index][2] ? [book, chapter+1] : index < books.length-1 ? [books[index+1][0],1] : null;
       const nav = `<div class="button-row">${previous ? button('Previous chapter','read',previous.join(',')) : ''}
         ${link('Chapters','chapters')}${next ? button('Next chapter','read',next.join(',')) : ''}</div>`;
-      return `<div class="reader-perch">
-        <button type="button" class="reader-lamb-art" data-scripture="companion" aria-label="Talk to your reading lamb" aria-expanded="false" aria-controls="lamb-comment">${portrait()}</button>
-      </div>
-      <aside id="lamb-comment" class="lamb-comment" aria-label="Your reading lamb" hidden>
-        <button type="button" class="lamb-comment-close" data-scripture="dismiss-companion" aria-label="Dismiss lamb comment">×</button>
-        <div data-lamb-context></div>
-      </aside>
-      <p class="verse-feedback" role="status" aria-live="polite" aria-atomic="true"></p>
+      return `<p class="verse-feedback" role="status" aria-live="polite" aria-atomic="true"></p>
       ${screen(reference([book,chapter]), `<p class="scripture-credit">${translation}</p>${nav}
         <div class="passage-text reader-text" data-reader="${book},${chapter}"><p role="status">Opening chapter…</p></div>
         <div class="button-row" data-reading-actions hidden>${readButton(book,chapter)}</div>${nav}`, 'bible')}`;
@@ -136,6 +129,20 @@ export function scriptureUI({getState, save, show, shell, esc, completed, portra
       <section class="text-section"><h3>Book of Mormon</h3><p>Optional · One guided study with links to official passages. Your reflections and artifacts stay saved when this collection is turned off.</p>
       ${button(libraryEnabled() ? 'Turn off Book of Mormon' : 'Enable Book of Mormon','toggle')}</section>`, 'settings')
   };
+
+  function mountCompanion(root, view) {
+    if (!Object.hasOwn(panels, view) && view !== 'study') return;
+    root.classList.add('has-reading-lamb');
+    const art = portrait();
+    const companion = view === 'reader'
+      ? `<button type="button" class="reader-lamb-art" data-scripture="companion" aria-label="Talk to your reading lamb" aria-expanded="false" aria-controls="lamb-comment">${art}</button>
+         <aside id="lamb-comment" class="lamb-comment" aria-label="Your reading lamb" hidden>
+           <button type="button" class="lamb-comment-close" data-scripture="dismiss-companion" aria-label="Dismiss lamb comment">×</button>
+           <div data-lamb-context></div>
+         </aside>`
+      : `<div class="reader-lamb-art">${art}</div>`;
+    root.querySelector('.panel-header').insertAdjacentHTML('beforeend', `<div class="reader-perch">${companion}</div>`);
+  }
 
   function read(code, chapter, first = null, last = first, retainVerse = false) {
     const verse = retainVerse ? data().position?.verse || '' : first ? String(first) : '';
@@ -440,5 +447,5 @@ export function scriptureUI({getState, save, show, shell, esc, completed, portra
       <h3>${labels[journeyFilter]}</h3>${results[journeyFilter]()}${link('Guided Discoveries','discoveries')}</section>`;
   }
 
-  return {panels, libraryEnabled, hydrate, input, submit, click, journey, setJourneyFilter, dispose, dismissCompanion};
+  return {panels, libraryEnabled, mountCompanion, hydrate, input, submit, click, journey, setJourneyFilter, dispose, dismissCompanion};
 }

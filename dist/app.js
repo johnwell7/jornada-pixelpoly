@@ -322,6 +322,7 @@ function renderPanel(focus = true) {
       });
     }
   }
+  scripture.mountCompanion(panel, view);
   scripture.hydrate(panel);
   if (focus) content.querySelector('#panel-title').focus({preventScroll:true});
 }
