@@ -1007,19 +1007,14 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
   font: bold 3cqw/1 Georgia,serif;
 }
 
-/* The supplied pixel-art frame surrounds live, scrollable panel content. */
+/* Artwork is split at the header seam so the parchment can resize without stretching the cap. */
 #panel.codex-panel {
-  --codex-wood: #71331e url("assets/codex/wood.webp") center / 100% 100%;
-  --codex-paper: #ffe5b2 url("assets/codex/paper.webp") center / 100% 100% no-repeat;
-  --codex-edge: clamp(12px,4vw,28px);
-  width: min(690px,calc(100% - 22px)); overflow: visible; border: 0;
-  border-radius: 0; background: transparent; font-family: Georgia,serif;
-  box-shadow: 0 9px 20px #200e08a8;
-}
-#panel.codex-panel::before {
-  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
-  border-style: solid; border-width: var(--codex-edge);
-  border-image: url("assets/codex/frame.webp") 25 44 57 44 / 1 stretch;
+  container-type: inline-size;
+  --codex-edge: clamp(28px,11.1cqw,66px);
+  --codex-cap: clamp(108px,31.37cqw,192px);
+  --codex-foot: clamp(49px,19.3cqw,96px);
+  width: min(690px,calc(100% - 16px)); overflow: visible; border: 0;
+  border-radius: 0; background: transparent; font-family: Georgia,serif; box-shadow: none;
 }
 #panel.codex-panel::backdrop { background: #28130d80; backdrop-filter: blur(4px); }
 #panel.codex-panel:not(:is(.panel-reader,.panel-guided,.panel-discoveries)) #panel-content {
@@ -1029,57 +1024,50 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
   min-height: min(760px,calc(100dvh - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
 }
 #panel.codex-panel .panel-header {
-  position: relative; z-index: 1; display: grid;
-  grid-template-columns: auto minmax(0,1fr) auto; gap: clamp(6px,2vw,16px);
-  padding: clamp(22px,5.3vw,37px) var(--codex-edge) clamp(16px,4vw,29px);
-  color: #fff0cc; text-align: center; background: var(--codex-wood); border: 0; border-radius: 0;
-  box-shadow: inset 0 -3px #e9ac54, inset 0 -6px #9b481d, inset 0 -8px #592815;
+  position: relative; z-index: 1; display: grid; place-items: center;
+  box-sizing: border-box; min-height: var(--codex-cap); padding: clamp(31px,10.8cqw,68px) 25% clamp(18px,6cqw,35px);
+  color: #ffe5ac; text-align: center; border: 0; border-radius: 0;
+  background: url("assets/codex/scripture-cap.webp") center / 100% 100% no-repeat;
 }
-#panel.codex-panel .panel-header > .panel-symbol { display: block; width: clamp(28px,8vw,53px); height: 32px; }
+#panel.codex-panel .panel-header > .panel-symbol { display: none; }
+#panel.codex-panel .panel-header > div { min-width: 0; }
 #panel.codex-panel .panel-header h2 {
-  font-size: clamp(1.55rem,7vw,3.2rem); font-weight: 700; line-height: 1.04;
-  text-shadow: 2px 3px #4a2317;
+  margin: 0; font-size: clamp(1.25rem,6.65cqw,2.75rem); font-weight: 700;
+  line-height: 1.02; overflow-wrap: anywhere; text-shadow: none;
 }
 #panel.codex-panel .panel-header .eyebrow {
-  font: 700 clamp(.61rem,2.4vw,.94rem)/1.35 Georgia,serif;
-  letter-spacing: .09em; text-transform: uppercase; color: #f2d59c; margin-bottom: 5px;
+  font: 700 clamp(.58rem,2.45cqw,1rem)/1.2 Georgia,serif;
+  letter-spacing: .13em; text-transform: uppercase; color: #f5dca3; margin-bottom: 4px;
 }
 #panel.codex-panel .panel-header .round-button {
-  width: clamp(40px,11vw,72px); height: auto; aspect-ratio: 101 / 105; padding: 0; border: 0;
-  border-radius: 0; background: url("assets/codex/back.webp") center / 100% 100% no-repeat;
+  position: absolute; inset: 44.33% auto auto 5.18%; width: 12.18%; height: 35.28%;
+  padding: 0; border: 0; border-radius: 0;
+  background: url("assets/codex/scripture-back.webp") center / 100% 100% no-repeat;
 }
-#panel.codex-panel .panel-header .close-button { background-image: url("assets/codex/close.webp"); }
+#panel.codex-panel .panel-header .close-button {
+  inset-inline: auto 5.28%; background-image: url("assets/codex/scripture-close.webp");
+}
 #panel.codex-panel .panel-header .round-button svg { visibility: hidden; }
-#panel.codex-panel :is(.round-button,.button):focus-visible { outline: 2px solid #fff2bb; outline-offset: -6px; }
-.codex-bookmark {
-  position: absolute; top: clamp(-22px,-3.2vw,-12px); left: 10%; z-index: 4; pointer-events: none;
-  width: clamp(33px,10vw,65px); aspect-ratio: 87 / 82;
-  background: url("assets/codex/ribbon.webp") center / 100% 100% no-repeat;
+#panel.codex-panel :is(.round-button,.button):focus-visible {
+  outline: 2px solid #fff2bb; outline-offset: -6px;
+}
+.codex-page {
+  position: relative; isolation: isolate; flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; padding-bottom: var(--codex-foot);
+}
+.codex-page::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  border: solid transparent; border-width: 0 var(--codex-edge) var(--codex-foot);
+  border-image: url("assets/codex/scripture-surface.webp") 0 109 199 109 fill / 1 stretch;
 }
 #panel.codex-panel .panel-scroll {
-  flex: 1 1 auto; position: relative; padding: 17px var(--codex-edge) 15px;
-  border-radius: 0; border: 0; margin-inline: 0; color: #422719;
-  background: var(--codex-paper); scrollbar-color: #a46635 #ecd0a0;
-}
-.codex-footer {
-  pointer-events: none; flex: 0 0 clamp(22px,6vw,34px);
-  background: url("assets/codex/rule.webp") center 18% / 84% auto no-repeat, var(--codex-paper);
-}
-#panel.codex-panel.panel-reader #panel-content {
-  background:
-    linear-gradient(90deg, #8b4c2c42, transparent 12%, transparent 88%, #8b4c2c42),
-    linear-gradient(0deg, #98572b30, transparent 18%),
-    var(--codex-paper);
-}
-#panel.codex-panel.panel-reader .panel-scroll {
-  min-height: 0; overflow: hidden auto; overscroll-behavior-y: contain;
-  margin-block-start: 13px; background: transparent; box-shadow: none;
-}
-#panel.codex-panel.panel-reader .codex-footer {
-  background: url("assets/codex/rule.webp") center 18% / 84% auto no-repeat;
+  flex: 1 1 auto; position: relative; min-height: 0; overflow: hidden auto;
+  overscroll-behavior-y: contain; margin: 0; padding: 4px var(--codex-edge) 12px;
+  color: #69402a; background: transparent; border: 0; border-radius: 0; box-shadow: none;
+  scrollbar-color: #ab7542 #f2d397;
 }
 #panel.codex-panel.panel-reader .reader-text .verse-row {
-  border-radius: 0; background: transparent;
+  border-radius: 0; color: #70452f; background: transparent;
 }
 #panel.codex-panel.panel-reader .reader-text .verse-row.marked .verse-number {
   font-weight: 700; text-decoration: underline; text-underline-offset: .18em;
@@ -1120,12 +1108,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
   color: #fff0c2; background: #6e4729; border-color: #a36b39;
 }
 
-#panel.codex-panel .panel-header > div::after {
-  content: ""; position: absolute; inset: auto auto -13px 50%; z-index: 1;
-  width: clamp(26px,6vw,42px); aspect-ratio: 1; translate: -50% 0;
-  background: url("assets/codex/clasp.webp") center / 100% 100% no-repeat;
-  pointer-events: none;
-}
 #panel.codex-panel .codex-chapter-nav > .button { gap: 3px; }
 #panel.codex-panel .codex-chapter-nav svg { width: clamp(12px,3.6vw,20px); height: auto; }
 #panel.codex-panel .codex-chapter-nav [data-scripture="read"]:first-child::after,

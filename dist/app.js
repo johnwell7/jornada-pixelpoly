@@ -310,9 +310,9 @@ function renderPanel(focus = true) {
       routeButton(artifactRoutes.get(artifactReaderReturn)?.mode === 'inspect' ? 'Return to artifact' : 'Return to exploration',artifactReaderReturn));
   }
   if (codex) {
-    content.querySelector('.panel-header').insertAdjacentHTML('afterbegin',
-      '<span class="codex-bookmark" aria-hidden="true"></span>');
-    content.insertAdjacentHTML('beforeend', '<div class="codex-footer" aria-hidden="true"></div>');
+    const scroll = content.querySelector('.panel-scroll');
+    scroll.insertAdjacentHTML('beforebegin', '<div class="codex-page"></div>');
+    scroll.previousElementSibling.append(scroll);
     if (view === 'reader') {
       content.querySelectorAll('.panel-scroll .button-row').forEach(row => {
         const chapters = row.querySelector('[data-view="chapters"]');
