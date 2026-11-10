@@ -126,8 +126,8 @@ test('retained legacy outfit updates on consecutive display frames rather than a
 test('the home lamb is laid out at final width without scaling its sprite',()=>{
   const css=readFileSync(new URL('../dist/style.css',import.meta.url),'utf8');
   const lamb=css.match(/\.sunset-home \.lamb \{([^}]+)\}/)?.[1];
-  assert.match(lamb,/width: 65%/);
-  assert.match(lamb,/width: round\(nearest, 65%, 1px\)/);
+  assert.match(lamb,/width: 76\.7%/);
+  assert.match(lamb,/width: round\(nearest, 76\.7%, 1px\)/);
   assert.doesNotMatch(lamb,/transform:|scale\(/);
   for(const name of ['room-sunset.png','haven-portrait.png','room-pot.png','room-shelf-matte.png'])assert.ok(!css.includes(name));
   const motion=readFileSync(new URL('../dist/bitpoly-motion.js',import.meta.url),'utf8');

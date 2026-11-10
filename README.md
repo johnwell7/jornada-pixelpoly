@@ -33,6 +33,12 @@ A ovelha padrão usa 81 quadros completos em imagens WebP individuais de posiç�
 
 Os trajes anteriores ainda usam o controlador antigo e precisam ser convertidos. A validação visual em celular continua pendente. Os testes automatizados não representam uma medição de FPS em aparelho real.
 
+## Lar e progresso
+
+Toque na ovelha para fazer carinho e abrir uma conversa curta. Arrastar sobre a ovelha continua sendo um gesto de carinho. A estante e os livros do chão abrem a Biblioteca, a mochila abre o inventário e a lamparina reage com um brilho localizado.
+
+Na mochila, abra **Jornal → Progress** para consultar os totais. Um capítulo entra no registro apenas com **Mark as Read**. A contagem de descobertas inclui estudos concluídos, e os artefatos encontrados aparecem em sua própria lista. Para os temas, cada descoberta concluída e cada capítulo marcado que contenha uma passagem vinculada no catálogo conta como uma entrada. Capítulos sem esse vínculo entram no total de leitura, sem receber um tema. As falas são pré-escritas e a escolha recente de cada contexto fica armazenada separadamente do progresso.
+
 ## Dados e publicação
 
 O leitor inclui a edição protestante da [World English Bible (WEBP)](https://ebible.org/find/details.php?id=engwebp), em inglês e em domínio público. O texto fica em `dist/assets/webp/`, com um arquivo por livro.

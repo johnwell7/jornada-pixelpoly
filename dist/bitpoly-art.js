@@ -76,7 +76,7 @@ export function bitpolyShadow(){
     <stop offset="1" stop-color="#28170f" stop-opacity="0"/>
    </radialGradient>
   </defs>
-  <g fill="url(#${id})">
+  <g fill="url(#${id})" transform="translate(470.5 0) scale(1.18 1) translate(-470.5 0)">
    <ellipse cx="472" cy="1290" rx="103" ry="14" opacity=".62"/>
    <ellipse cx="402" cy="1289" rx="32" ry="9"/>
    <ellipse cx="452" cy="1290" rx="24" ry="8"/>

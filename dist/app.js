@@ -1,3 +1,4 @@
+import {homeCompanion} from './home-companion.js';
 import {animateBitpolyLantern} from './bitpoly-lantern.js';
 import {applyLambSkin} from './lamb-skins.js';
 import {hasAnimatedOutfit} from './lamb-frames.js';
@@ -5,7 +6,7 @@ import {scrollInspection, toggleScroll} from './pentateuch.js';
 import {artifacts, artifactStatus, restoreArtifactDiscoveries} from './artifacts.js';
 import {satchelArt, satchelMark} from './satchel-art.js';
 import {discoveries} from './discoveries.js';
-import {studyProgress} from './study-progress.js';
+import {satchelProgress} from './satchel-progress.js';
 import {scriptureUI} from './scripture.js';
 import {bitpolyLamb, bitpolyPlants, bitpolyShadow, bitpolyLantern} from './bitpoly-art.js';
 import {animateBitpolyLamb, animateBitpolyPlants} from './bitpoly-motion.js';
@@ -42,37 +43,31 @@ function dressedSheep(studying = false) {
 }
 const panel=document.querySelector('#panel');
 const world=document.querySelector('#world');
-let view='home', petCount=0, toastTimer, reactionTimer, returnFocus=null, pendingImport=null;
+let view='home', toastTimer, returnFocus=null, pendingImport=null;
+const companion = homeCompanion(world);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const action=(label,act,kind='primary')=>`<button class="button ${kind}" data-action="${act}">${label}</button>`;
 const routeButton=(label,route,kind='secondary')=>`<button class="button ${kind}" data-view="${route}">${label}</button>`;
 function toast(message){const el=document.querySelector('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),4000);}
-function save(){refreshStudyStats();try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));storageOK=true;return true;}catch{storageOK=false;toast('Storage is unavailable. Export your progress to keep it.');return false;}}
-const statItems = [
-  ['chapters','book','Chapters','Chapters read'],
-  ['discoveries','map','Discoveries','Completed discoveries'],
-  ['themes','spark','Themes','Themes explored']
-];
-function refreshStudyStats() {
-  const progress = studyProgress(state);
-  const values = {...progress, themes:progress.themes.size};
-  world.querySelectorAll('[data-stat]').forEach(node => { node.textContent = values[node.dataset.stat]; });
-}
-function studyStats() {
-  const progress = studyProgress(state);
-  const values = {...progress, themes:progress.themes.size};
-  return `<div class="study-stats" role="group" aria-label="Study progress">${statItems.map(([id,symbol,short,label]) =>
-    `<button type="button" data-view="map" data-journey-filter="${id}"><span aria-hidden="true">${icon(symbol)}</span>
-      <strong data-stat="${id}">${values[id]}</strong><span aria-hidden="true">${short}</span><span class="stat-label">${label}</span></button>`).join('')}</div>`;
-}
-function home(){return `<div class="game-shell sunset-home"><header class="hud"><div class="wordmark">${icon('spark')}<span>jornada</span><span class="version">02</span></div><button class="round-button" data-view="settings" aria-label="Settings and progress backup">${icon('settings')}</button>${studyStats()}</header><main class="haven"><div class="stage" aria-label="Your lamb’s cozy home"><picture><img class="room" src="assets/bitpoly/room.png" width="941" height="1671" fetchpriority="high" alt="A warm sunset room with an arched window, wooden shelves, a glowing lantern, floor books, a satchel, and a woven rug"></picture>${bitpolyPlants()}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));storageOK=true;return true;}catch{storageOK=false;toast('Storage is unavailable. Export your progress to keep it.');return false;}}
+function home(){return `<div class="game-shell sunset-home"><header class="hud"><div class="wordmark">${icon('spark')}<span>jornada</span><span class="version">02</span></div><button class="round-button" data-view="settings" aria-label="Settings and progress backup">${icon('settings')}</button></header><main class="haven"><div class="stage" aria-label="Your lamb’s cozy home"><picture><img class="room" src="assets/bitpoly/room.png" width="941" height="1671" fetchpriority="high" alt="A warm sunset room with an arched window, wooden shelves, a glowing lantern, floor books, a satchel, and a woven rug"></picture>${bitpolyPlants()}
 <svg class="window-sky" viewBox="0 0 941 1671" preserveAspectRatio="none" aria-hidden="true"><defs>
 <clipPath id="sunset-window-panes"><path d="M61 453Q67 410 133 410V546L61 531ZM168 420Q225 458 233 513V565L168 550ZM61 567 133 582V700L61 692ZM168 589 233 603V706L168 700Z"/></clipPath>
 <radialGradient id="sunset-mist"><stop stop-color="#ffe5c9" stop-opacity=".6"/><stop offset=".48" stop-color="#ffd3b3" stop-opacity=".25"/><stop offset="1" stop-color="#f9cab3" stop-opacity="0"/></radialGradient>
 <linearGradient id="sunset-leading-fade"><stop offset=".65" stop-color="white"/><stop offset="1" stop-color="white" stop-opacity="0"/></linearGradient>
 <mask id="sunset-mist-mask"><rect x="-170" y="435" width="215" height="245" fill="url(#sunset-leading-fade)"/></mask></defs>
 <g clip-path="url(#sunset-window-panes)"><g class="window-cloud-drift" mask="url(#sunset-mist-mask)" fill="url(#sunset-mist)"><ellipse cx="-60" cy="472" rx="100" ry="22"/><ellipse cx="-101" cy="631" rx="65" ry="17" opacity=".6"/></g></g></svg>
-<button class="shelf-hotspot" data-view="library" aria-label="Open the Scripture Shelf" title="Scripture Shelf"></button>${bitpolyLantern()}<div class="dust dust-one"></div><div class="dust dust-two"></div><div class="dust dust-three"></div><button class="scene-prop book-prop" data-view="library" aria-label="Open scriptures from the floor books"></button><button class="scene-prop bag-prop" data-view="inventory" aria-label="Open satchel"></button>${bitpolyShadow()}<div class="lamb-area"><div class="speech" id="speech" role="status"></div><button class="lamb" data-action="pet" aria-label="Pet your lamb">${dressedSheep()}</button><div class="hearts" aria-hidden="true">♡<span>✧</span>♡</div></div>${!state.found && scripture.libraryEnabled()?`<button class="found-object" data-view="discover" aria-label="Discover the curious brass object">${icon('spark')}<span>Something new</span></button>`:''}</div><div id="completion-note" class="completion-note" role="status"></div></main><nav class="dock" aria-label="Your haven"><button data-view="home" aria-label="Home" class="active">${icon('home')}<span>Home</span></button><button data-view="inventory">${icon('bag')}<span>Satchel</span>${(state.equipped || state.missionaryTagEquipped || state.outfit) ? `<i role="img" aria-label="${Number(state.equipped) + Number(state.missionaryTagEquipped) + Number(Boolean(state.outfit))} equipped"></i>` : '' }</button><button data-view="library">${icon('book')}<span>Study</span></button><button data-view="map">${icon('map')}<span>Journey</span></button></nav></div>`;}
+<button class="shelf-hotspot" data-action="home-library" aria-label="Open the Scripture Shelf" title="Scripture Shelf"></button>${bitpolyLantern()}<button class="lantern-hotspot" data-action="home-lantern" aria-label="Warm the lantern glow"></button><div class="dust dust-one"></div><div class="dust dust-two"></div><div class="dust dust-three"></div><button class="scene-prop book-prop" data-action="home-library" aria-label="Open scriptures from the floor books"></button><button class="scene-prop bag-prop" data-view="inventory" aria-label="Open satchel"></button>${bitpolyShadow()}<div class="lamb-area">
+  <button class="lamb" data-action="pet" aria-label="Pet and talk to your lamb" aria-controls="home-dialogue" aria-expanded="false">${dressedSheep()}</button>
+</div>
+<div class="home-dialogue" id="home-dialogue" hidden>
+    <p data-home-line role="status"></p>
+    <div class="home-dialogue-options" data-home-options hidden>
+      <button type="button" data-home-choice></button>
+      <button type="button" data-home-later data-action="home-dismiss">Maybe later</button>
+      <button class="home-dialogue-close" type="button" data-action="home-dismiss" aria-label="Close conversation">×</button>
+    </div>
+</div>${!state.found && scripture.libraryEnabled()?`<button class="found-object" data-view="discover" aria-label="Discover the curious brass object">${icon('spark')}<span>Something new</span></button>`:''}</div><div id="completion-note" class="completion-note" role="status"></div></main><nav class="dock" aria-label="Your haven"><button data-view="home" aria-label="Home" class="active">${icon('home')}<span>Home</span></button><button data-view="inventory">${icon('bag')}<span>Satchel</span>${(state.equipped || state.missionaryTagEquipped || state.outfit) ? `<i role="img" aria-label="${Number(state.equipped) + Number(state.missionaryTagEquipped) + Number(Boolean(state.outfit))} equipped"></i>` : '' }</button><button data-view="library">${icon('book')}<span>Study</span></button><button data-view="map">${icon('map')}<span>Journey</span></button></nav></div>`;}
 let sheepMotion, plantMotion, lanternMotion;
 function renderWorld(){sheepMotion?.dispose();plantMotion?.dispose();lanternMotion?.dispose();world.innerHTML=home();world.inert=panel.open;const lamb=world.querySelector(".lamb"),stage=world.querySelector(".stage");sheepMotion=animateBitpolyLamb(lamb);plantMotion=animateBitpolyPlants(stage);lanternMotion=animateBitpolyLantern(stage);bindLambDrag(stage,lamb);}
 function bindLambDrag(stage, lamb) {
@@ -81,7 +76,7 @@ function bindLambDrag(stage, lamb) {
 
   stage.addEventListener('pointerdown', event => {
     if (gesture || !event.isPrimary || event.button !== 0 ||
-        event.target.closest('button:not(.lamb)')) return;
+        event.target.closest('.home-dialogue, button:not(.lamb)')) return;
     gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, dragging: false, petted: false };
   });
 
@@ -120,7 +115,8 @@ function bindLambDrag(stage, lamb) {
     if (Math.hypot((x - body.left - body.width / 2) / reachX,
                    (y - body.top - body.height / 2) / reachY) <= 1) {
       gesture.petted = true;
-      react('pet');
+      sheepMotion.pet();
+      companion.touch();
     }
   });
 
@@ -177,9 +173,14 @@ function inventory(){
       <div class="satchel-empty">${icon('map')}<h3>Paintings</h3><p>No paintings stored yet.</p></div>
     </section>
     <section class="satchel-image-pocket" data-compartment="journal" aria-label="Journal" hidden>
-      <div class="satchel-journal"><h3>Journal</h3>${notes.length ? notes.map(([title,note]) =>
+      <div class="satchel-journal-tabs" role="group" aria-label="Journal sections">
+        <button type="button" data-action="journal-section" data-journal-section="reflections" aria-pressed="true" aria-controls="satchel-reflections">Reflections</button>
+        <button type="button" data-action="journal-section" data-journal-section="progress" aria-pressed="false" aria-controls="satchel-progress">Progress</button>
+      </div>
+      <div class="satchel-journal" id="satchel-reflections"><h3>Journal</h3>${notes.length ? notes.map(([title,note]) =>
         `<details><summary>${esc(title)}</summary><p>${esc(note)}</p></details>`).join('') : '<p>Your study reflections appear here.</p>'}
-      ${routeButton('Open Journey','map')}</div>
+        ${routeButton('Open Journey','map')}</div>
+      <div id="satchel-progress" hidden>${satchelProgress(state, {esc, icon, routeButton, artifactRoute})}</div>
     </section>
   </div>`;
 }
@@ -188,6 +189,15 @@ function selectSatchelTab(target) {
   panel.querySelectorAll('[data-compartment]').forEach(pocket => {
     pocket.hidden = pocket.dataset.compartment !== target.dataset.satchelTab;
   });
+}
+function selectJournalSection(target) {
+  const pocket = target.closest('.satchel-image-pocket');
+  pocket.querySelectorAll('[data-journal-section]').forEach(section => {
+    const active = section === target;
+    section.setAttribute('aria-pressed', String(active));
+    document.getElementById(section.getAttribute('aria-controls')).hidden = !active;
+  });
+  pocket.scrollTop = 0;
 }
 function artifactSlot(entry) {
   if (artifactStatus(state, entry) !== 'stored') {
@@ -284,7 +294,8 @@ function importPreview(){return panelShell('Bring your progress home',`<p>This b
 let guidedReactionPending = false;
 const scripture = scriptureUI({
   getState: () => state, save, show, shell: panelShell, esc,
-  completed: () => { guidedReactionPending = true; },
+  completed: () => { guidedReactionPending = true; companion.note('study'); },
+  chapterMarked: () => companion.note('study'),
   portrait: () => dressedSheep(true).replaceAll('lamb-wool','study-lamb-wool').replaceAll('lamb-face','study-lamb-face'),
   animate: lamb => animateBitpolyLamb(lamb, {studying:true})
 });
@@ -364,18 +375,75 @@ function leavePanel(destination, className, selector, animationName) {
   exit.finished.then(finish, finish);
 }
 
-function show(next,push=true,initial=false){satchelExit=null;panel.classList.remove('satchel-closing','artifact-closing');if(next==='explore')next='library';if(next==='study'&&!scripture.libraryEnabled())next='scripture-settings';if(!panels[next]&&next!=='home')next='home';const artifactPage = artifactRoutes.get(next);
-if (artifactPage) {
-  const {entry, mode} = artifactPage;
-  const status = artifactStatus(state, entry);
-  if ((mode === 'item' || mode === 'inspect') && status !== 'stored') next = 'inventory';
-  if (mode === 'reveal' && status === 'unknown') {
-    if (entry.exploration) next = artifactRoute(entry,'trail');
-    else if (!scripture.libraryEnabled()) next = 'scripture-settings';
+function show(next, push = true, initial = false) {
+  satchelExit = null;
+  panel.classList.remove('satchel-closing','artifact-closing');
+  if (next === 'explore') next = 'library';
+  if (next === 'study' && !scripture.libraryEnabled()) next = 'scripture-settings';
+  if (!Object.hasOwn(panels, next) && next !== 'home') next = 'home';
+  const artifactPage = artifactRoutes.get(next);
+  if (artifactPage) {
+    const {entry, mode} = artifactPage;
+    const status = artifactStatus(state, entry);
+    if ((mode === 'item' || mode === 'inspect') && status !== 'stored') next = 'inventory';
+    if (mode === 'reveal' && status === 'unknown') {
+      if (entry.exploration) next = artifactRoute(entry,'trail');
+      else if (!scripture.libraryEnabled()) next = 'scripture-settings';
+    }
   }
+  if (next !== 'reader') artifactReaderReturn = null;
+  if (next === 'import-preview' && !pendingImport) next = 'settings';
+  const enteringHome = next === 'home' && (initial || view !== 'home');
+  if (view === 'home' && next !== 'home') {
+    const focused = document.activeElement;
+    returnFocus = focused?.closest('#home-dialogue') ? world.querySelector('.lamb') : focused;
+    companion.leave();
+  }
+  view = next;
+  if (push) history.replaceState(null, '', `#${next}`);
+  if (next === 'home') {
+    scripture.dispose();
+    if (panel.open) panel.close();
+    world.inert = false;
+    if (guidedReactionPending) {
+      guidedReactionPending = false;
+      sheepMotion.pet(false);
+    } else if (enteringHome) sheepMotion.greet();
+    if (enteringHome) companion.enter();
+    (returnFocus?.isConnected ? returnFocus : world.querySelector('[data-view="home"]'))?.focus({preventScroll:true});
+    return;
+  }
+  if (!panel.open) {
+    renderPanel(false);
+    panel.showModal();
+    world.inert = true;
+  } else renderPanel(false);
+  panel.querySelector('#panel-title').focus({preventScroll:true});
+  panel.querySelector('.panel-scroll').scrollTop = 0;
 }
-if(next!=='reader')artifactReaderReturn=null;if(next==='import-preview'&&!pendingImport)next='settings';const enteringHome=next==='home'&&(initial||view!=='home');view=next;if(push)history.replaceState(null,'',next==='home'?'#home':`#${next}`);if(next==='home'){scripture.dispose();if(panel.open)panel.close();world.inert=false;if(guidedReactionPending){guidedReactionPending=false;react('complete');}else if(enteringHome)sheepMotion.greet();(returnFocus?.isConnected ? returnFocus : document.querySelector('[data-view="home"]'))?.focus({preventScroll:true});return;}if(!panel.open){returnFocus=document.activeElement;renderPanel(false);panel.showModal();world.inert=true;}else renderPanel(false);document.querySelector('#panel-title').focus({preventScroll:true});document.querySelector('.panel-scroll').scrollTop=0;}
-function react(kind){const speech=document.querySelector('#speech');const area=document.querySelector('.lamb-area');clearTimeout(reactionTimer);area.classList.remove('petting','nourished');void area.offsetWidth;area.classList.add(kind==='complete'?'nourished':'petting');sheepMotion.pet(kind !== 'complete');const messages=['Oh, hello you.','A little closer?','That’s the spot.','Happy you’re here.'];speech.textContent=kind==='complete'?'A little light to carry.':messages[petCount++%messages.length];speech.classList.add('visible');reactionTimer=setTimeout(()=>{speech.classList.remove('visible');area.classList.remove('petting','nourished');},4200);}
+
+function openHomeLibrary(target) {
+  target.classList.add('is-opening');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const frames = reduced ? [{opacity:1},{opacity:1}] : [{opacity:1},{opacity:.68},{opacity:1}];
+  const feedback = target.animate(frames, {duration:reduced ? 90 : 140});
+  const open = () => {
+    target.classList.remove('is-opening');
+    if (view !== 'home' || !target.isConnected) return;
+    show('library');
+    returnFocus = target;
+  };
+  feedback.finished.then(open, open);
+}
+
+function warmLantern() {
+  const stage = world.querySelector('.stage');
+  stage.classList.add('lantern-touched');
+  clearTimeout(warmLantern.timer);
+  warmLantern.timer = setTimeout(() => stage.classList.remove('lantern-touched'), 1050);
+  companion.lantern();
+}
+
 function toggleArtifactEquipment() {
   const page = artifactRoutes.get(view);
   if (!page || !['item','inspect'].includes(page.mode)) return;
@@ -385,6 +453,7 @@ function toggleArtifactEquipment() {
   state[entry.equipment] = entry.equipment === 'outfit' ? (equipped ? entry.id : null) : equipped;
   save();
   if (entry.equipment === 'outfit') {
+    if (equipped) companion.note('outfit');
     world.querySelector('.lamb').innerHTML = dressedSheep();
     sheepMotion?.dispose();
     sheepMotion = animateBitpolyLamb(world.querySelector('.lamb'));
@@ -406,6 +475,7 @@ function recordArtifact(actionName) {
   if (actionName === 'finish-artifact' && mode === 'trail') {
     if (status === 'unknown') {
       state.artifactDiscoveries[entry.id] = 'revealed';
+      companion.note('artifact', entry.name);
       save();
     }
     show(artifactRoute(entry, status === 'stored' ? 'item' : 'reveal'));
@@ -416,7 +486,84 @@ function recordArtifact(actionName) {
   }
 }
 function downloadProgress(){const blob=new Blob([JSON.stringify({app:'jornada',version:1,exportedAt:new Date().toISOString(),state},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='jornada-progress.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Progress backup downloaded.');}
-document.addEventListener('click',e=>{const target=e.target.closest('[data-view],[data-action],[data-choice]');if(!target||satchelExit)return;if(target.dataset.view){if(target.dataset.view==='inventory'&&artifactRoutes.get(view)?.mode==='inspect'){closePanel();return;}if(target.dataset.journeyFilter)scripture.setJourneyFilter(target.dataset.journeyFilter);show(target.dataset.view);return;}if(target.dataset.choice){state.choice=state.choice===target.dataset.choice?'':target.dataset.choice;save();document.querySelectorAll('[data-choice]').forEach(b=>{const selected=b.dataset.choice===state.choice;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',selected);});document.querySelector('.finish').disabled=!state.choice&&!state.reflection.trim();return;}switch(target.dataset.action){case'satchel-tab':selectSatchelTab(target);break;case'close':closePanel();break;case'pet':react('pet');break;case'finish-artifact':case'store-artifact':recordArtifact(target.dataset.action);break;case'collect':if(view!=='discover'||!scripture.libraryEnabled()||state.found)break;state.found=true;save();renderWorld();show('item');toast('A new discovery, tucked into your satchel.');break;case'equip':toggleArtifactEquipment();break;case'toggle-scroll':toggleScroll(target);break;case'complete':{const result=completeStudy(state);if(!result.accepted)return;state=result.state;const persisted=save();renderWorld();show('home');if(result.firstCompletion){react('complete');document.querySelector('#completion-note').textContent=persisted?'A small discovery. A little nourishment. Reflection saved.':'A small discovery. Export your progress to keep it.';}else toast(persisted?'Your reflection is saved.':'Export your progress to keep your reflection.');break;}case'export':downloadProgress();break;case'import':document.querySelector('#import-file').click();break;case'confirm-import':if(pendingImport){state=pendingImport;pendingImport=null;const persisted=save();renderWorld();show('home');toast(persisted?'Your journey is at home here.':'Loaded for this visit. Storage is unavailable.');}break;}});
+document.addEventListener('click', event => {
+  const target = event.target.closest('[data-view],[data-action],[data-choice]');
+  if (!target || satchelExit) return;
+  const {view:destination, action:command, choice, journeyFilter} = target.dataset;
+  if (destination) {
+    if (destination === 'inventory' && artifactRoutes.get(view)?.mode === 'inspect') {
+      closePanel();
+      return;
+    }
+    if (journeyFilter) scripture.setJourneyFilter(journeyFilter);
+    show(destination);
+    return;
+  }
+  if (choice) {
+    state.choice = state.choice === choice ? '' : choice;
+    save();
+    panel.querySelectorAll('[data-choice]').forEach(button => {
+      const selected = button.dataset.choice === state.choice;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+    panel.querySelector('.finish').disabled = !state.choice && !state.reflection.trim();
+    return;
+  }
+  switch (command) {
+    case 'satchel-tab': selectSatchelTab(target); break;
+    case 'journal-section': selectJournalSection(target); break;
+    case 'close': closePanel(); break;
+    case 'pet':
+      sheepMotion.pet();
+      companion.touch(true);
+      break;
+    case 'home-dismiss': companion.dismiss(); break;
+    case 'home-library': openHomeLibrary(target); break;
+    case 'home-lantern': warmLantern(); break;
+    case 'finish-artifact':
+    case 'store-artifact': recordArtifact(command); break;
+    case 'collect':
+      if (view !== 'discover' || !scripture.libraryEnabled() || state.found) break;
+      state.found = true;
+      companion.note('artifact', 'the Liahona');
+      save();
+      renderWorld();
+      show('item');
+      toast('A new discovery, tucked into your satchel.');
+      break;
+    case 'equip': toggleArtifactEquipment(); break;
+    case 'toggle-scroll': toggleScroll(target); break;
+    case 'complete': {
+      const result = completeStudy(state);
+      if (!result.accepted) return;
+      state = result.state;
+      if (result.firstCompletion) companion.note('study');
+      const persisted = save();
+      renderWorld();
+      show('home');
+      if (result.firstCompletion) {
+        sheepMotion.pet(false);
+        document.querySelector('#completion-note').textContent = persisted
+          ? 'A small discovery. A little nourishment. Reflection saved.'
+          : 'A small discovery. Export your progress to keep it.';
+      } else toast(persisted ? 'Your reflection is saved.' : 'Export your progress to keep your reflection.');
+      break;
+    }
+    case 'export': downloadProgress(); break;
+    case 'import': document.querySelector('#import-file').click(); break;
+    case 'confirm-import':
+      if (pendingImport) {
+        state = pendingImport;
+        pendingImport = null;
+        const persisted = save();
+        renderWorld();
+        show('home');
+        toast(persisted ? 'Your journey is at home here.' : 'Loaded for this visit. Storage is unavailable.');
+      }
+      break;
+  }
+});
 document.addEventListener('input',e=>{if(e.target.id==='reflection'){state.reflection=e.target.value;save();document.querySelector('.finish').disabled=!state.choice&&!state.reflection.trim();}});
 document.querySelector('#import-file').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>262144)throw new Error('That file is too large for a Jornada progress backup.');const backup=await file.text();pendingImport=restoreArtifactDiscoveries(parseProgress(backup),JSON.parse(backup).state);show('import-preview');}catch(err){toast(err.message||'Unable to read this backup.');}e.target.value='';});
 panel.addEventListener('click', event => {
@@ -427,6 +574,9 @@ panel.addEventListener('input', scripture.input);
 panel.addEventListener('submit', scripture.submit);
 panel.addEventListener('cancel',e=>{e.preventDefault();if(!scripture.dismissCompanion(panel))closePanel();});
 panel.addEventListener('click',e=>{if(e.target===panel){const r=panel.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closePanel();}});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && view === 'home' && companion.dismiss()) event.preventDefault();
+});
 window.addEventListener('hashchange',()=>show(location.hash.slice(1)||'home',false));
 renderWorld();show(location.hash.slice(1)||'home',false,true);if(!storageOK)toast('Storage is unavailable. Export progress to keep it.');
 

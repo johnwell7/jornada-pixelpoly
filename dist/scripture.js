@@ -39,7 +39,7 @@ function parseReference(input) {
   return [book[0], +chapter, first ? +first : null, last ? +last : null];
 }
 
-export function scriptureUI({getState, save, show, shell, esc, completed, portrait, animate}) {
+export function scriptureUI({getState, save, show, shell, esc, completed, chapterMarked, portrait, animate}) {
   const data = () => getState().scripture;
   const libraryEnabled = () => data().bookOfMormon;
   const button = (label, command, value = '', kind = 'secondary') =>
@@ -373,8 +373,10 @@ export function scriptureUI({getState, save, show, shell, esc, completed, portra
       case 'mark': {
         const chapters = data().readChapters;
         const index = chapters.indexOf(value);
-        if (index === -1) chapters.push(value);
-        else chapters.splice(index,1);
+        if (index === -1) {
+          chapters.push(value);
+          chapterMarked?.();
+        } else chapters.splice(index,1);
         save();
         const actions = node.parentElement;
         const marked = index === -1;

@@ -20,3 +20,24 @@ export function studyProgress(state) {
     discoveries: complete.length + Number(state.completed)
   };
 }
+
+// A chapter counts for a theme only when the authored guide connects that theme
+// to a passage in it. Repeated references to the same chapter count once per theme.
+export function themeExploration(state) {
+  const {complete} = studyProgress(state);
+  const read = new Set(state.scripture.readChapters);
+  const chapters = new Map();
+  const counts = new Map();
+  for (const {theme, primary, connection} of discoveries) {
+    if (!chapters.has(theme)) chapters.set(theme, new Set());
+    const linked = chapters.get(theme);
+    for (const [book, chapter] of [primary, connection]) {
+      const key = `${book}:${chapter}`;
+      if (read.has(key)) linked.add(key);
+    }
+  }
+  for (const [theme, linked] of chapters) counts.set(theme, linked.size);
+  for (const {theme} of complete) counts.set(theme, counts.get(theme) + 1);
+  if (state.completed) counts.set('Faith & Guidance', 1);
+  return [...counts].sort(([a, n], [b, m]) => m - n || a.localeCompare(b));
+}
