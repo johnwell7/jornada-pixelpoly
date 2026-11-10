@@ -1384,8 +1384,8 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 /* Match the room artwork and the sharper animated props at the same depth.
    Keep the lamb, shadow, UI and interactive targets outside these filters. */
 .sunset-home .stage > picture > .room {
-  filter: blur(clamp(.35px, .11vw, .65px));
+  filter: blur(clamp(.65px, .20vw, 1.15px));
 }
 .sunset-home :is(.bp-plant, .bp-lantern) {
-  filter: blur(clamp(.45px, .14vw, .8px));
+  filter: blur(clamp(.18px, .065vw, .35px));
 }
