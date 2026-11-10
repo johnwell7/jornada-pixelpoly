@@ -108,14 +108,6 @@ dialog{position:fixed;max-width:none;max-height:none;width:min(480px,calc(100% -
   .haven {
     background: #53301f;
   }
-  .haven::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: url("assets/bitpoly/room.png") center / cover;
-    filter: blur(22px) brightness(.66);
-    transform: scale(1.08);
-  }
   .stage {
     inset: 50% auto auto 50%;
     width: min(100%, calc(100dvh * 941 / 1671));
@@ -1309,15 +1301,7 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 
 
 /* V114: the supplied sunset artwork, hotspots, character and light share one coordinate space. */
-.sunset-home .haven::before {
-  content: ""; position: absolute; inset: 0;
-  background: #4a2417 url("assets/bitpoly/room.png") center / cover no-repeat;
-  filter: none; transform: none;
-}
-.sunset-home .haven::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: #24120b70;
-}
+.sunset-home .haven { background: #2d1b18; }
 .sunset-home .stage {
   z-index: 1; inset: 50% auto auto 50%;
   width: min(100%, calc(100dvh * 941 / 1672)); height: auto;
@@ -1326,7 +1310,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
   --v05-lamp-x: 72.2%; --v05-lamp-y: 50.5%; --lamp-table-offset: 4.1%;
 }
 .sunset-home .room { object-fit: contain; object-position: center; }
-.sunset-home .stage::after { background: linear-gradient(#20100955,transparent 14%,transparent 90%,#24120955); }
 .sunset-home .lamb-area { width: 54%; left: 50%; top: 57.5%; bottom: auto; }
 #world .sunset-home .book-prop { left: 17%; right: auto; top: 60.5%; bottom: auto; width: 18%; height: 8.3%; }
 #world .sunset-home .bag-prop { left: auto; right: .5%; top: 57%; bottom: auto; width: 22%; height: 14%; }
@@ -1342,7 +1325,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 
 
 /* V115 — Bitpoly composition. New rigs and controller own all character motion. */
-.sunset-home .haven::before { background-image: url("assets/bitpoly/room.png"); }
 .sunset-home .stage { width: min(100%,calc(100dvh * 941 / 1670)); aspect-ratio: 941 / 1670; }
 .sunset-home .lamb-area { width: 46%; top: 54.5%; }
 .sunset-home .lamb:has(.bitpoly-lamb) { aspect-ratio: 1085 / 1210; }
@@ -1379,13 +1361,40 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 .bp-lantern { position: absolute; left: 65.4%; top: 43%; width: 12%; z-index: 1; pointer-events: none; }
 .bp-lantern svg { display: block; width: 100%; height: auto; overflow: visible; }
 .bp-lantern-halo { position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: .14;
-  background: radial-gradient(ellipse 10% 9% at 71.3% 50.5%,#ffb53b66,transparent 85%); }
+  background: radial-gradient(ellipse 15% 8% at 71.2% 51%,#ffbf715c,transparent 90%); }
 
-/* Match the room artwork and the sharper animated props at the same depth.
-   Keep the lamb, shadow, UI and interactive targets outside these filters. */
-.sunset-home .stage > picture > .room {
-  filter: blur(clamp(.65px, .20vw, 1.15px));
+/* Color-only finishing pass over the artwork, below the scene controls. */
+.sunset-home .stage::after {
+  z-index: 2;
+  background: #c89976;
+  mix-blend-mode: soft-light;
+  opacity: .12;
 }
-.sunset-home :is(.bp-plant, .bp-lantern) {
-  filter: blur(clamp(.18px, .065vw, .35px));
+
+/* Match the painted room's midtones and preserve its original pixel texture. */
+.sunset-home .room {
+  filter: saturate(.90) contrast(.98) brightness(1.02);
+}
+.sunset-home .bp-plant {
+  filter: sepia(.14) saturate(.89) contrast(.95) brightness(.96);
+}
+.sunset-home .bp-shelf-plant { filter: sepia(.17) saturate(.85) contrast(.93) brightness(.91); }
+.sunset-home .bp-lantern-body { filter: saturate(.83) contrast(.94) brightness(.91); }
+.sunset-home [data-lantern-flame] { filter: saturate(.89) brightness(.94); }
+.sunset-home .lamb .bitpoly-lamb { filter: sepia(.08) saturate(.95); }
+
+/* Contact at the pot bases and the lantern's feet, below the animated art. */
+.sunset-home .stage > picture::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 6% 1.05% at 10.8% 70.35%, #2b1810a6, transparent 95%),
+    radial-gradient(ellipse 4.5% .65% at 37.4% 36.75%, #2c191288, transparent 95%),
+    radial-gradient(ellipse 5% .75% at 71.8% 54.45%, #2e1911a6, transparent 95%);
+}
+.sunset-home .bp-lamb-ground-shadow ellipse:first-of-type {
+  rx: 108px;
+  ry: 15px;
 }
