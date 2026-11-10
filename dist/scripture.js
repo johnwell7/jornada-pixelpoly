@@ -290,7 +290,9 @@ export function scriptureUI({getState, save, show, shell, esc, completed, portra
           const selected = verses.find(verse => verse.dataset.value === data().position?.verse || (range && includesVerse(verse.dataset.value,range.first)));
           if (selected) {
             selectVerse(selected);
-            selected.scrollIntoView({block:'center'});
+            const page = node.closest('.panel-scroll');
+            const {top, height} = selected.getBoundingClientRect();
+            page.scrollTop += top - page.getBoundingClientRect().top - (page.clientHeight - height) / 2;
           }
         }
       } catch {

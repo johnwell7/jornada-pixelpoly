@@ -340,8 +340,19 @@ function closePanel() {
 
 function leavePanel(destination, className, selector, animationName) {
   if (satchelExit) return;
+  const surface = panel.querySelector(selector);
+  if (className === 'satchel-closing') {
+    // Closing can interrupt the opening. Fold from the visible position.
+    const rigStyle = getComputedStyle(surface);
+    surface.style.setProperty('--satchel-rig-start', rigStyle.transform);
+    surface.style.setProperty('--satchel-rig-opacity', rigStyle.opacity);
+    for (const layer of ['flap', 'supplies']) {
+      const {transform} = getComputedStyle(surface.querySelector(`.bag-${layer}`));
+      surface.style.setProperty(`--satchel-${layer}-start`, transform);
+    }
+  }
   panel.classList.add(className);
-  const exit = panel.querySelector(selector).getAnimations()
+  const exit = surface.getAnimations()
     .find(animation => animation.animationName === animationName);
   if (!exit) return show(destination);
 

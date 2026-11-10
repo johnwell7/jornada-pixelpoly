@@ -864,6 +864,7 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 #panel.panel-inventory::backdrop { background: #2d160e70; backdrop-filter: blur(3px); }
 #panel.panel-inventory #panel-content { max-height: none; }
 #panel.panel-inventory .satchel-rig {
+  --satchel-flap-closed: translateY(6cqw) scaleY(1.12);
   position: relative; padding: 0; overflow: visible; background: transparent;
   border: 0; box-shadow: none; border-radius: 0; aspect-ratio: 1071 / 1469; isolation: isolate; container-type: inline-size;
 }
@@ -939,36 +940,39 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 }
 @keyframes satchel-arrive { from { opacity: 0; transform: translateY(22px) scale(.96); } }
 @keyframes satchel-unfold {
-  from { transform: translateY(55px) scaleY(1.22) rotate(-3deg); }
+  from { transform: var(--satchel-flap-closed); }
   75% { transform: translateY(-5px) rotate(.5deg); }
   to { transform: none; }
 }
 @keyframes satchel-rise { from { transform: translateY(8.5cqw); } }
-@keyframes satchel-tuck { to { transform: translateY(8.5cqw); } }
+@keyframes satchel-tuck {
+  from { transform: var(--satchel-supplies-start, none); }
+  to { transform: translateY(8.5cqw); }
+}
 
 .satchel-hit:focus-visible, .satchel-rig-slot:focus-visible, .satchel-equipped:focus-visible {
   outline: 2px solid #ffe7a5; outline-offset: -4px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  #panel.satchel-closing::backdrop { animation: satchel-backdrop-out .46s ease-in both; }
+  #panel.satchel-closing::backdrop { animation: satchel-backdrop-out .34s .34s ease-in both; }
   .panel-inventory.satchel-closing .satchel-rig {
     pointer-events: none;
-    animation: satchel-depart .46s ease-in both;
+    animation: satchel-depart .34s .34s ease-in both;
   }
-  .panel-inventory.satchel-closing .bag-flap { animation: satchel-fold .32s ease-in both; }
-  .panel-inventory.satchel-closing .bag-supplies { animation: satchel-tuck .32s ease-in both; }
+  .panel-inventory.satchel-closing .bag-flap { animation: satchel-fold .34s ease-in-out both; }
+  .panel-inventory.satchel-closing .bag-supplies { animation: satchel-tuck .34s ease-in-out both; }
 }
 @keyframes satchel-fold {
-  from { transform: none; }
-  to { transform: translateY(68px) scaleY(1.22); }
+  from { transform: var(--satchel-flap-start, none); }
+  to { transform: var(--satchel-flap-closed); }
 }
 @keyframes satchel-depart {
-  0%, 26% { opacity: 1; transform: none; }
+  from { opacity: var(--satchel-rig-opacity, 1); transform: var(--satchel-rig-start, none); }
   to { opacity: 0; transform: translateY(42px) scale(.93); }
 }
 @keyframes satchel-backdrop-out {
-  0%, 26% { opacity: 1; }
+  from { opacity: 1; }
   to { opacity: 0; }
 }
 
@@ -1060,6 +1064,28 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 .codex-footer {
   pointer-events: none; flex: 0 0 clamp(22px,6vw,34px);
   background: url("assets/codex/rule.webp") center 18% / 84% auto no-repeat, var(--codex-paper);
+}
+#panel.codex-panel.panel-reader #panel-content {
+  background:
+    linear-gradient(90deg, #8b4c2c42, transparent 12%, transparent 88%, #8b4c2c42),
+    linear-gradient(0deg, #98572b30, transparent 18%),
+    var(--codex-paper);
+}
+#panel.codex-panel.panel-reader .panel-scroll {
+  min-height: 0; overflow: hidden auto; overscroll-behavior-y: contain;
+  margin-block-start: 13px; background: transparent; box-shadow: none;
+}
+#panel.codex-panel.panel-reader .codex-footer {
+  background: url("assets/codex/rule.webp") center 18% / 84% auto no-repeat;
+}
+#panel.codex-panel.panel-reader .reader-text .verse-row {
+  border-radius: 0; background: transparent;
+}
+#panel.codex-panel.panel-reader .reader-text .verse-row.marked .verse-number {
+  font-weight: 700; text-decoration: underline; text-underline-offset: .18em;
+}
+#panel.codex-panel.panel-reader .reader-text .verse-row:focus-visible {
+  outline: 2px solid #956034; outline-offset: -2px;
 }
 #panel.codex-panel .button {
   color: #fff0cc; border: 0; border-radius: 0; position: relative; isolation: isolate;
