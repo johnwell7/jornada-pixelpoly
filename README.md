@@ -16,7 +16,7 @@ Abra o endereço informado pelo servidor. O aplicativo está em `dist/`.
 npm run build
 ```
 
-O build verifica a sintaxe e executa 26 testes. Não transforma ou copia o aplicativo: `dist/` já é a saída estática pronta para hospedagem.
+O build verifica a sintaxe e executa os testes. Não transforma ou copia o aplicativo: `dist/` já é a saída estática pronta para hospedagem.
 
 ## Organização
 
@@ -34,6 +34,8 @@ A ovelha padrão usa 81 quadros completos em imagens WebP individuais de posiç�
 Os trajes anteriores ainda usam o controlador antigo e precisam ser convertidos. A validação visual em celular continua pendente. Os testes automatizados não representam uma medição de FPS em aparelho real.
 
 ## Dados e publicação
+
+O leitor inclui a edição protestante da [World English Bible (WEBP)](https://ebible.org/find/details.php?id=engwebp), em inglês e em domínio público. O texto fica em `dist/assets/webp/`, com um arquivo por livro.
 
 O progresso continua no armazenamento local do navegador. Antes de migrar de endereço, exporte o progresso pelas configurações do aplicativo. Um novo domínio não recebe automaticamente os dados do endereço antigo.
 

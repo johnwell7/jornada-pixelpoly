@@ -267,6 +267,7 @@ export function scriptureUI({getState, save, show, shell, esc, completed, portra
       const [code, chapter, first, last] = (node.dataset.reader || node.dataset.passage).split(',');
       try {
         const entries = Object.entries((await loadBook(code))[chapter])
+          .filter(([,text]) => text.trim())
           .sort(([a],[b]) => verseNumber(a)-verseNumber(b));
         if (!node.isConnected) continue;
         const range = readerRange?.code === code && readerRange.chapter === +chapter ? readerRange : null;

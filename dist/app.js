@@ -294,13 +294,10 @@ const panels = {...scripture.panels, inventory, study, map:journey, settings,
   ...Object.fromEntries([...artifactRoutes].map(([route, {entry, mode}]) =>
     [route, () => artifactPanels[mode](entry)]))
 };
-const codexViews = new Set(['library','bible','chapters','reader','discoveries','guided',
-  'study','discovery-complete','item','inspect','discover']);
-
 function renderPanel(focus = true) {
   scripture.dispose();
   const mode = artifactRoutes.get(view)?.mode;
-  const codex = codexViews.has(view) || mode || view === 'artifact-trails';
+  const codex = view !== 'inventory';
   panel.className = `panel-${view}${codex ? ' codex-panel' : ''}${mode ? ` artifact-panel artifact-${mode}-panel` : ''}`;
   const content = panel.querySelector('#panel-content');
   content.innerHTML = panels[view]();
@@ -314,7 +311,7 @@ function renderPanel(focus = true) {
   }
   if (codex) {
     content.querySelector('.panel-header').insertAdjacentHTML('afterbegin',
-      '<span class="codex-bookmark" aria-hidden="true">✦</span>');
+      '<span class="codex-bookmark" aria-hidden="true"></span>');
     content.insertAdjacentHTML('beforeend', '<div class="codex-footer" aria-hidden="true"></div>');
     if (view === 'reader') {
       content.querySelectorAll('.panel-scroll .button-row').forEach(row => {

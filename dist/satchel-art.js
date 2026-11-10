@@ -20,7 +20,7 @@ export function satchelArt() {
       </pattern>
     </defs>
     <path fill="#44220e" d="${supplies}"/>
-    <use href="#satchel-texture" class="bag-supplies" clip-path="url(#satchel-supplies)"/>
+    <g clip-path="url(#satchel-supplies)"><use href="#satchel-texture" class="bag-supplies"/></g>
     <use href="#satchel-texture" mask="url(#satchel-body)"/>
     <rect x="144" y="558" width="784" height="358" fill="url(#satchel-grid-cloth)"/>
     <rect x="251" y="1014" width="186" height="160" fill="url(#satchel-equipped-cloth)"/>
