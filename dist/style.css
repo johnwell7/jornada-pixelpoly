@@ -1242,23 +1242,22 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 .bp-lantern-halo { position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: .14;
   background: radial-gradient(ellipse 15% 8% at 71.2% 51%,#ffbf715c,transparent 90%); }
 
-/* The warm room grade ends below the character's authored lighting. */
+/* V4: no global tint over independently lit, already warm artwork. */
 .sunset-home .stage::after {
   z-index: 1;
   background: #c89976;
-  mix-blend-mode: soft-light;
-  opacity: .12;
+  mix-blend-mode: normal;
+  opacity: 0;
 }
 
 /* Match the painted room's midtones and preserve its original pixel texture. */
 .sunset-home .room {
-  filter: saturate(.90) contrast(.98) brightness(1.02);
+  filter: saturate(.90) contrast(.97) brightness(1.02);
 }
 .sunset-home .bp-plant {
-  filter: sepia(.14) saturate(.89) contrast(.95) brightness(.96);
+  filter: saturate(.90) contrast(.97) brightness(.98);
 }
-.sunset-home .bp-shelf-plant { filter: sepia(.17) saturate(.85) contrast(.93) brightness(.91); }
-.sunset-home .bp-lantern-body { filter: saturate(.83) contrast(.94) brightness(.91); }
+.sunset-home .bp-lantern-body { filter: saturate(.88) contrast(.97) brightness(.96); }
 .sunset-home [data-lantern-flame] { filter: saturate(.89) brightness(.94); }
 
 /* Contact at the pot bases and the lantern's feet, below the animated art. */
@@ -1351,3 +1350,10 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 .satchel-progress .button { width: 100%; min-height: 44px; padding: 5px; font: 700 .85rem Georgia, serif; }
 .satchel-theme-suggestions li > span { display: block; margin: 5px 0 2px; }
 .satchel-progress-note { color: #694329; font-style: italic; }
+
+/* V4: native pixel detail only on density-matched independent textures.
+   Keep the painted background and animated flame on their original sampling. */
+.sunset-home .lamb .bitpoly-lamb { filter: saturate(.94) contrast(.99); }
+.sunset-home .lamb [data-lamb-frame-image],
+.sunset-home .bp-plant image,
+.sunset-home .bp-lantern-body { image-rendering: pixelated; }

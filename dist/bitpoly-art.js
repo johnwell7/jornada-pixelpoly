@@ -3,9 +3,9 @@ import {fullLambSprite, frameManifestFor, hasAnimatedOutfit, PRIESTLY_OUTFIT, TU
 let serial = 0;
 export const bitpolyAssets = Object.freeze({
   room:'assets/bitpoly/room.png',
-  vine:'assets/bitpoly/window-vine.png', shelf:'assets/bitpoly/shelf-plant.png',
-  floor:'assets/bitpoly/floor-plant.png',
-  lantern:'assets/bitpoly/lantern.png', flame:'assets/bitpoly/flame-01.png',flame2:'assets/bitpoly/flame-02.png',flame3:'assets/bitpoly/flame-03.png',flame4:'assets/bitpoly/flame-04.png',flame5:'assets/bitpoly/flame-05.png',flame6:'assets/bitpoly/flame-06.png',flame7:'assets/bitpoly/flame-07.png',flame8:'assets/bitpoly/flame-08.png'
+  vine:'assets/bitpoly/visual-v4/window-vine.webp', shelf:'assets/bitpoly/visual-v4/shelf-plant.webp',
+  floor:'assets/bitpoly/visual-v4/floor-plant.webp',
+  lantern:'assets/bitpoly/visual-v4/lantern.webp', flame:'assets/bitpoly/flame-01.png',flame2:'assets/bitpoly/flame-02.png',flame3:'assets/bitpoly/flame-03.png',flame4:'assets/bitpoly/flame-04.png',flame5:'assets/bitpoly/flame-05.png',flame6:'assets/bitpoly/flame-06.png',flame7:'assets/bitpoly/flame-07.png',flame8:'assets/bitpoly/flame-08.png'
 });
 const clip = (id, d) => `<clipPath id="${id}"><path d="${d}"/></clipPath>`;
 const use = (id, region) => `<g clip-path="url(#${id}-${region})"><use href="#${id}-texture"/></g>`;
