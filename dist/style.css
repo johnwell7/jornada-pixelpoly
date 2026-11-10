@@ -857,7 +857,7 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 
 /* The illustrated bag and the controls share a responsive, fixed-ratio stage. */
 #panel.panel-inventory {
-  width: min(480px, calc(100% - 12px), calc((100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 864 / 1460));
+  width: min(480px, calc(100% - 12px), calc((100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 1071 / 1469));
   margin-inline: auto; border: 0; border-radius: 0; background: transparent;
   box-shadow: none; overflow: visible;
 }
@@ -865,71 +865,63 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 #panel.panel-inventory #panel-content { max-height: none; }
 #panel.panel-inventory .satchel-rig {
   position: relative; padding: 0; overflow: visible; background: transparent;
-  border: 0; box-shadow: none; border-radius: 0; aspect-ratio: 864 / 1460; isolation: isolate; container-type: inline-size;
+  border: 0; box-shadow: none; border-radius: 0; aspect-ratio: 1071 / 1469; isolation: isolate; container-type: inline-size;
 }
 .satchel-art {
   position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
   filter: drop-shadow(0 7px 8px #24120b81); pointer-events: none;
 }
-.bag-flap { transform-box: fill-box; transform-origin: 50% 12%; }
-.satchel-hit { cursor: pointer; }
+.bag-flap { transform-box: view-box; transform-origin: 50% 3%; }
+.satchel-hit {
+  cursor: pointer; padding: 0; border: 0; background: transparent;
+}
 .satchel-image-close {
-  position: absolute; inset: 7.5% 9.9% auto auto; width: 10%; aspect-ratio: 1;
-  display: grid; place-items: center; padding: 3px; color: #fff1c9;
-  background: #673720; border: 2px solid #d5a063; border-radius: 23%;
-  box-shadow: inset 0 0 0 2px #a46737, 0 2px #422215;
+  position: absolute; inset: 10.1% 12% auto auto; width: 9.7%; height: 6.6%;
 }
-.satchel-image-close svg { width: 75%; height: 75%; }
 .satchel-image-tabs {
-  position: absolute; inset: 28.6% 9.6% auto 10.6%; height: 5.9%;
-  display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 2%;
+  position: absolute; inset: 30.75% 13.1% auto 14.1%; height: 6%;
+  display: grid; grid-template-columns: 266fr 260fr 240fr; gap: 1%;
 }
-.satchel-image-tabs button {
-  padding: 0 2px; min-width: 0; border: 1px dashed #c08b59; border-radius: 9px 9px 3px 3px;
-  background: linear-gradient(145deg,#a2663f,#754328); color: #fff1d0;
-  box-shadow: 0 2px 2px #552914;
-  font: 700 clamp(.63rem,4.1cqw,1.05rem) Georgia,serif;
+.satchel-image-tabs [aria-pressed="true"]:not([data-satchel-tab="artifacts"]) {
+  box-shadow: inset 0 0 0 2px #ffe4a4;
+  background: #ffdf8826;
 }
-.satchel-image-tabs [aria-pressed="true"] {
-  color: #542f18; background: linear-gradient(145deg,#ffedbd,#e5b878); border-color: #ac7440;
-  box-shadow: inset 0 0 0 2px #ffe8ba, 0 2px 2px #552914;
-}
+.satchel-image-tabs [data-satchel-tab="artifacts"][aria-pressed="false"] { background: #54270e46; }
 .satchel-rig-grid {
-  position: absolute; inset: 37% 10.4% 37.4% 10.4%;
+  position: absolute; inset: 38.6% 13.8% 38.2% 14%;
   display: grid; grid-template-columns: repeat(4,minmax(0,1fr));
-  grid-auto-rows: 46.5%; gap: 7% 3%;
+  grid-auto-rows: 47.6%; gap: 4.8% 2.6%;
   overflow: hidden auto; overscroll-behavior-y: contain; touch-action: pan-y;
-  scrollbar-width: thin; scrollbar-color: #92592f transparent;
+  scrollbar-width: none; scroll-snap-type: y proximity;
 }
 .satchel-rig-slot {
-  display: grid; place-items: center; min-width: 0; min-height: 0; padding: 3px;
-  border: 1px dashed #c79564; border-radius: 12%;
-  background: linear-gradient(135deg,#966341,#b17d52);
-  box-shadow: 0 0 0 2px #af7950, inset 0 2px 4px #58351d73;
-  color: #d9ab7b; font: 700 clamp(.7rem,5cqw,1.3rem) Georgia,serif;
+  --slot-chamfer: polygon(15% 0,85% 0,100% 16%,100% 84%,85% 100%,15% 100%,0 84%,0 16%);
+  position: relative; display: grid; place-items: center; min-width: 0; min-height: 0;
+  padding: 4%; border: 0; scroll-snap-align: start;
+  background: url("assets/bitpoly/satchel.webp") 16.9% 43.5% / 598% 885% no-repeat;
 }
-.satchel-rig-slot.has-artifact {
-  cursor: pointer; grid-template-rows: minmax(0,1fr) auto; color: #542f18;
-  background: radial-gradient(ellipse at 49% 45%,#cc974f,#744123 79%);
-  border: 1px solid #f5cc82; box-shadow: 0 0 0 2px #a9713d;
+.satchel-rig-slot.has-artifact, .satchel-equipped {
+  cursor: pointer; clip-path: var(--slot-chamfer);
+  background: radial-gradient(ellipse at 45% 48%,#af742b,#603414 76%);
+  border: 2px solid #e8ab4a; box-shadow: inset 0 0 0 1px #ffda86;
 }
-#panel .satchel-rig-slot .artifact { width: 100%; height: 100%; min-height: 0; }
-.satchel-rig-slot strong {
-  width: 100%; border-radius: 3px; background: #f3ce92;
-  font-size: clamp(.61rem,3.2cqw,.94rem); line-height: 1.15;
+.satchel-rig-note { position: absolute; inset: 68.65% 12% 19.2% 15%; }
+.satchel-equipped-items {
+  position: absolute; inset: 0 52% 0 0; display: flex; align-items: center;
+  justify-content: center; gap: 1cqw;
 }
-.satchel-rig-note {
-  position: absolute; inset: 68% 11% 16% 11%; display: grid;
-  grid-template-columns: 1.12fr 1fr; gap: 5%; align-items: center;
-  color: #563019; font: italic clamp(.67rem,3.8cqw,1.05rem)/1.25 Georgia,serif;
+.satchel-equipped {
+  --slot-chamfer: polygon(13% 0,87% 0,100% 13%,100% 87%,87% 100%,13% 100%,0 87%,0 13%);
+  flex: 0 0 auto; height: 85%; aspect-ratio: 186 / 160; padding: 2%;
 }
-.satchel-rig-note > div {
-  display: grid; padding: 5px; border: 1px dashed #aa7546; border-radius: 7px; background: #f2ce95aa;
+.satchel-equipped-items:has(.satchel-equipped:nth-child(2)) .satchel-equipped {
+  flex: 0 1 30%; min-width: 0; height: auto;
 }
-.satchel-rig-note .button { padding: 5px; font-size: clamp(.61rem,3.2cqw,.9rem); }
-.satchel-rig-note p { margin: 0; padding-inline-start: 10%; border-inline-start: 1px solid #a97548; }
+.satchel-rig-note .artifact-trails-link {
+  position: absolute; inset: 11% 0 0 56%; width: auto; height: auto;
+}
 .satchel-image-pocket {
-  position: absolute; inset: 36% 8% 15.6%; overflow: auto; overscroll-behavior: contain;
+  position: absolute; inset: 37% 10.4% 17.5%; overflow: auto; overscroll-behavior: contain;
   padding: 12px; color: #56341f; border: 1px dashed #a77547; border-radius: 12px;
   background: repeating-linear-gradient(135deg,#97663b17 0 1px,transparent 1px 4px),linear-gradient(#e5bd87,#f2d8ad);
   box-shadow: inset 0 0 0 4px #ffe8bb70;
@@ -953,74 +945,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 }
 @keyframes satchel-reveal { from { opacity: 0; transform: translateY(24px); } }
 
-/* The stitched trim stays with the controls as the stage scales. */
-.satchel-rig {
-  --bag-chamfer: polygon(12% 0,88% 0,100% 12%,100% 88%,88% 100%,12% 100%,0 88%,0 12%);
-  --bag-cloth-grain: repeating-linear-gradient(132deg,#6d411412 0 1px,transparent 1px 4px);
-}
-.satchel-image-close {
-  clip-path: var(--bag-chamfer);
-  border-radius: 0;
-  border-color: #ebbd75;
-  background: linear-gradient(145deg,#8e502c,#60301d);
-}
-.satchel-image-tabs { gap: 1%; }
-.satchel-image-tabs button {
-  position: relative; display: flex; gap: 1.2cqw; align-items: center; justify-content: center;
-  border-radius: 0; clip-path: polygon(10% 0,90% 0,100% 23%,100% 100%,0 100%,0 23%);
-  background: var(--bag-cloth-grain),linear-gradient(145deg,#9a5d35,#71391f);
-  color: #e8ba83;
-}
-.satchel-image-tabs button svg { width: 5cqw; flex: none; }
-.satchel-image-tabs [aria-pressed="true"] {
-  background: var(--bag-cloth-grain),linear-gradient(145deg,#ffedbd,#e5b878);
-}
-.satchel-rig-slot {
-  position: relative; isolation: isolate; border: 0; border-radius: 0; clip-path: var(--bag-chamfer);
-  padding: 5%; background: linear-gradient(150deg,#bd8b60,#825231 55%,#c49466);
-}
-.satchel-rig-slot::before {
-  content: ''; position: absolute; inset: 3%; z-index: -1; clip-path: var(--bag-chamfer);
-  background: var(--bag-cloth-grain),linear-gradient(145deg,#8f5e3c,#b18056);
-  box-shadow: inset 0 3px 7px #5028167f; border: 1px dashed #d1a474;
-}
-.satchel-rig-slot.has-artifact {
-  background: linear-gradient(135deg,#ffe3a0,#a46b30 64%,#e3a857);
-}
-.satchel-rig-slot.has-artifact::before {
-  border-color: #ffce78;
-  background: repeating-conic-gradient(from 20deg at 50% 48%,#fff0a21b 0deg 7deg,transparent 9deg 30deg),
-    radial-gradient(ellipse at 50% 48%,#d49d45,#72421e 74%);
-}
-.satchel-compass { display: block; width: 100%; height: 100%; }
-.satchel-rig-slot strong {
-  border-radius: 0; clip-path: var(--bag-chamfer);
-  padding-block: .65cqw; background: linear-gradient(#ffedb4,#e3ad62);
-}
-.satchel-rig-note { inset: 67.5% 10% 15% 10%; gap: 4%; }
-.satchel-rig-note > div { display: block; padding: 0; border: 0; background: none; }
-.satchel-equipped {
-  position: relative; width: 100%; display: grid; align-items: center;
-  grid-template-columns: 50%; justify-content: center;
-  font: inherit; color: inherit; padding: 8% 5% 4%; cursor: pointer;
-  background: var(--bag-cloth-grain),linear-gradient(135deg,#efcb92,#dfaa6f);
-  border: 1px dashed #c08b52; border-radius: 10px;
-  box-shadow: inset 0 0 0 2px #ffe3ae80,0 2px 4px #61351648;
-}
-.satchel-equipped strong, .satchel-equipped em { display: block; }
-.satchel-equipped strong { font-style: normal; }
-.satchel-equipped em { font-size: .89em; }
-.satchel-equipped-status {
-  position: absolute; inset: auto auto 94% 3%; padding: 1% 5%; display: flex; align-items: center; gap: .9cqw;
-  background: linear-gradient(#9b6036,#794121); color: #ffe6b6;
-  border: 1px dashed #ce9b62; border-radius: 5px; font-style: normal;
-}
-.satchel-equipped-status svg { width: 3.7cqw; }
-.satchel-equipped-art {
-  aspect-ratio: 1; clip-path: var(--bag-chamfer); background: radial-gradient(#ba863d,#764623);
-}
-.satchel-rig-note p { text-align: center; }
-.satchel-rig-note p svg { display: block; width: 8cqw; margin: 0 auto 1cqw; }
 .satchel-hit:focus-visible, .satchel-rig-slot:focus-visible, .satchel-equipped:focus-visible {
   outline: 2px solid #ffe7a5; outline-offset: -4px;
 }
@@ -1071,8 +995,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
   #world .book-prop { top: 65%; left: 6%; width: 19%; height: 19%; }
   #world .bag-prop { top: 57%; right: 4%; width: 20%; height: 25%; }
 }
-.satchel-image-tabs button { font-size: clamp(.55rem,3.55cqw,.94rem); }
-.satchel-image-tabs button svg { width: 4.6cqw; height: 4.6cqw; }
 .satchel-equipped-pin {
   position: absolute; top: 7%; right: 7%; z-index: 1;
   width: 4.8cqw; aspect-ratio: 1; display: grid; place-items: center;
@@ -1204,10 +1126,9 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
   grid-template-rows: minmax(0,1fr);
   padding: 4%;
 }
-.artifact-slot img, .satchel-equipped-art img {
+.artifact-slot img, .satchel-equipped img {
   display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain;
 }
-#panel .satchel-rig-note .button { padding: 4px 6px; min-height: 40px; }
 #panel.artifact-panel .artifact-full-art {
   display: block; width: auto; height: auto; max-width: min(100%, 580px); max-height: min(49dvh, 440px);
   object-fit: contain; margin: 0 auto 12px;
@@ -1232,10 +1153,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 }
 @keyframes artifact-reveal { from { opacity: 0; transform: translateY(5px) scale(.985); } }
 @keyframes artifact-dismiss { to { opacity: 0; } }
-.artifact-trails-link {
-  padding: 3px; border: 0; background: none; font: inherit; color: inherit;
-  text-decoration: underline; text-decoration-color: #80533987; text-underline-offset: .15em;
-}
 
 .worn-missionary-tag {
   filter: drop-shadow(2px 4px 2px #49291872);

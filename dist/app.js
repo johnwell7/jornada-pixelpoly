@@ -156,21 +156,21 @@ function inventory(){
   return `<div class="panel-scroll satchel-rig" lang="en">
     ${satchelArt()}
     <h2 class="stat-label" id="panel-title" tabindex="-1">Satchel</h2>
-    <button class="satchel-hit satchel-image-close" type="button" data-action="close" aria-label="Close panel">${icon('close')}</button>
+    <button class="satchel-hit satchel-image-close" type="button" data-action="close" aria-label="Close panel"></button>
     <div class="satchel-image-tabs" role="group" aria-label="Satchel compartments">
       ${[['artifacts','Artifacts'],['paintings','Paintings'],['journal','Journal']].map(([id,label],i) =>
-        `<button type="button" class="satchel-hit" data-action="satchel-tab" data-satchel-tab="${id}" aria-pressed="${i===0}">${satchelMark(id)}<span>${label}</span></button>`).join('')}
+        `<button type="button" class="satchel-hit" data-action="satchel-tab" data-satchel-tab="${id}" aria-pressed="${i===0}" aria-label="${label}"></button>`).join('')}
     </div>
     <section data-compartment="artifacts" aria-label="Artifacts">
-      <div class="satchel-rig-grid" tabindex="0" role="region" aria-label="Artefatos da mochila. Role para ver mais espaços.">${artifacts.map(artifactSlot).join('')}${'<span class="satchel-rig-slot" aria-hidden="true">✦</span>'.repeat(Math.max(0,18-artifacts.length))}</div>
+      <div class="satchel-rig-grid" tabindex="0" role="region" aria-label="Artefatos da mochila. Role para ver mais espaços.">${artifacts.map(artifactSlot).join('')}${'<span class="satchel-rig-slot" aria-hidden="true"></span>'.repeat(Math.max(0,20-artifacts.length))}</div>
       <div class="satchel-rig-note">
-        <div>${equipped.length
-          ? `<button class="satchel-equipped" type="button" data-view="${artifactRoute(equipped[0], 'item')}" aria-label="Open equipped ${equipped[0].name}">
-            <span class="satchel-equipped-status">${satchelMark('shield')}${equipped.length === 1 ? 'Equipped' : `${equipped.length} equipped`}</span>
-            <span class="satchel-equipped-art"><img src="${equipped[0].inventoryImage}" alt="" decoding="async"></span>
-          </button>`
-          : routeButton('Artifact Explorations','artifact-trails','primary')}</div>
-        <p><svg viewBox="0 0 70 57" aria-hidden="true"><path fill="#a3672d" d="m5 50 15-20 7 5 14-22 10 13 5-4 13 28H54L40 22 27 41l-7-6-12 15Z"/><path fill="#efc17a" d="m20 48 20-26 14 28Z"/><path fill="none" stroke="#a3672d" stroke-width="2" stroke-linecap="round" d="m22 12-5-5m13 2-2-6m11 5 1-7m9 10 4-6m3 11 5-4"/></svg><button class="artifact-trails-link" type="button" data-view="artifact-trails">There is room for more discoveries on your journey.</button></p>
+        <div class="satchel-equipped-items" role="group" aria-label="Equipped">
+          ${equipped.map(entry =>
+            `<button class="satchel-equipped" type="button" data-view="${artifactRoute(entry, 'item')}" aria-label="Open equipped ${entry.name}">
+              <img src="${entry.inventoryImage}" alt="" decoding="async">
+            </button>`).join('')}
+        </div>
+        <button class="satchel-hit artifact-trails-link" type="button" data-view="artifact-trails" aria-label="There is room for more discoveries on your journey. Open artifact explorations"></button>
       </div>
     </section>
     <section class="satchel-image-pocket" data-compartment="paintings" aria-label="Paintings" hidden>
@@ -191,7 +191,7 @@ function selectSatchelTab(target) {
 }
 function artifactSlot(entry) {
   if (artifactStatus(state, entry) !== 'stored') {
-    return '<button class="satchel-rig-slot" type="button" data-view="artifact-trails" aria-label="Unknown artifact. Open artifact explorations">✦</button>';
+    return '<button class="satchel-rig-slot" type="button" data-view="artifact-trails" aria-label="Unknown artifact. Open artifact explorations"></button>';
   }
   const equipped = isArtifactEquipped(entry);
   return `<button class="satchel-rig-slot has-artifact artifact-slot" type="button" data-view="${artifactRoute(entry, 'item')}" aria-label="Open ${entry.name}${equipped ? ', equipped' : ''}">
