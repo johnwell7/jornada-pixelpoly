@@ -65,10 +65,25 @@ export function bitpolyLamb({equipped=false, tag=false, studying=false, outfit}=
 }
 
 
-// Independent contact shadow. No copy of the character, no breathing transform.
+// The supporting pixels end near y=1289 in the room's coordinate space.
 export function bitpolyShadow(){
  const id=`bp-shadow-${++serial}`;
- return `<svg class="bp-lamb-ground-shadow" viewBox="0 0 941 1671" aria-hidden="true"><defs><radialGradient id="${id}"><stop offset="0" stop-color="#26160f" stop-opacity=".32"/><stop offset=".48" stop-color="#28180f" stop-opacity=".2"/><stop offset="1" stop-color="#28180f" stop-opacity="0"/></radialGradient></defs><ellipse cx="476" cy="1290" rx="122" ry="19" fill="url(#${id})"/><ellipse cx="510" cy="1294" rx="105" ry="24" fill="url(#${id})" opacity=".26"/></svg>`;
+ return `<svg class="bp-lamb-ground-shadow" viewBox="0 0 941 1671" aria-hidden="true">
+  <defs>
+   <radialGradient id="${id}">
+    <stop offset="0" stop-color="#241410" stop-opacity=".74"/>
+    <stop offset=".55" stop-color="#28170f" stop-opacity=".42"/>
+    <stop offset="1" stop-color="#28170f" stop-opacity="0"/>
+   </radialGradient>
+  </defs>
+  <g fill="url(#${id})">
+   <ellipse cx="472" cy="1290" rx="103" ry="14" opacity=".62"/>
+   <ellipse cx="402" cy="1289" rx="32" ry="9"/>
+   <ellipse cx="452" cy="1290" rx="24" ry="8"/>
+   <ellipse cx="489" cy="1290" rx="24" ry="8"/>
+   <ellipse cx="535" cy="1289" rx="33" ry="9"/>
+  </g>
+ </svg>`;
 }
 
 export const flameFrames = Object.freeze([{"src":"assets/bitpoly/flame-01.png","x":313.292,"y":484.316,"size":612.305},{"src":"assets/bitpoly/flame-02.png","x":351.804,"y":542.376,"size":531.696},{"src":"assets/bitpoly/flame-03.png","x":315.641,"y":507.548,"size":601.599},{"src":"assets/bitpoly/flame-04.png","x":391.274,"y":600.702,"size":452.222},{"src":"assets/bitpoly/flame-05.png","x":332.891,"y":514.705,"size":571.018},{"src":"assets/bitpoly/flame-06.png","x":322.473,"y":524.987,"size":590.305},{"src":"assets/bitpoly/flame-07.png","x":379.138,"y":581.701,"size":478.958},{"src":"assets/bitpoly/flame-08.png","x":310.299,"y":487.224,"size":615.691}]);

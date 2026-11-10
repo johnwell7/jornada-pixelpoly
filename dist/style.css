@@ -1310,7 +1310,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
   --v05-lamp-x: 72.2%; --v05-lamp-y: 50.5%; --lamp-table-offset: 4.1%;
 }
 .sunset-home .room { object-fit: contain; object-position: center; }
-.sunset-home .lamb-area { width: 54%; left: 50%; top: 57.5%; bottom: auto; }
 #world .sunset-home .book-prop { left: 17%; right: auto; top: 60.5%; bottom: auto; width: 18%; height: 8.3%; }
 #world .sunset-home .bag-prop { left: auto; right: .5%; top: 57%; bottom: auto; width: 22%; height: 14%; }
 .sunset-home .shelf-hotspot { position: absolute; inset: 28% auto auto 32%; width: 39%; height: 19%; z-index: 3; background: none; border: 0; }
@@ -1326,8 +1325,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 
 /* V115 — Bitpoly composition. New rigs and controller own all character motion. */
 .sunset-home .stage { width: min(100%,calc(100dvh * 941 / 1670)); aspect-ratio: 941 / 1670; }
-.sunset-home .lamb-area { width: 46%; top: 54.5%; }
-.sunset-home .lamb:has(.bitpoly-lamb) { aspect-ratio: 1085 / 1210; }
 .bp-plant { position: absolute; pointer-events: none; z-index: 1; }
 .bp-plant svg { width: 100%; height: auto; overflow: visible; }
 .bp-window-vine { left: -4.5%; top: 8.3%; width: 19%; }
@@ -1348,24 +1345,40 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 .reader-lamb-art.bitpoly-motion::after { display: none; }
 .sunset-home .hearts { display: none; }
 
-/* V116: 35% smaller, anchored at the supporting paws; dialogue stays readable. */
-.sunset-home .lamb { transform: scale(.65); transform-origin: 50% 95.3%; }
-.sunset-home .lamb:has(.lamb-wearing-skin) { transform-origin: 50% 88.15%; }
+/* Draw the sprite at its final width. The inset keeps the existing paw line. */
+.sunset-home .lamb-area {
+  width: 46%;
+  aspect-ratio: 1085 / 1210;
+  left: 27%;
+  top: 49.6%;
+  bottom: auto;
+  transform: none;
+}
+.sunset-home .lamb {
+  position: absolute;
+  width: 65%;
+  width: round(nearest, 65%, 1px);
+  left: 17.5%;
+  left: round(nearest, 17.5%, 1px);
+  top: 33.355%;
+  top: round(nearest, 33.355%, 1px);
+  aspect-ratio: 1085 / 1210;
+  filter: none;
+}
 .sunset-home .speech { top: 34%; }
 
 
 /* V117: contact point at rug center; full-size SVG keeps projection in scene space. */
 .sunset-home .stage { width: min(100%,calc(100dvh * 941 / 1671)); aspect-ratio: 941 / 1671; }
-.sunset-home .lamb-area { top: 49.6%; }
 .bp-lamb-ground-shadow { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
 .bp-lantern { position: absolute; left: 65.4%; top: 43%; width: 12%; z-index: 1; pointer-events: none; }
 .bp-lantern svg { display: block; width: 100%; height: auto; overflow: visible; }
 .bp-lantern-halo { position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: .14;
   background: radial-gradient(ellipse 15% 8% at 71.2% 51%,#ffbf715c,transparent 90%); }
 
-/* Color-only finishing pass over the artwork, below the scene controls. */
+/* The warm room grade ends below the character's authored lighting. */
 .sunset-home .stage::after {
-  z-index: 2;
+  z-index: 1;
   background: #c89976;
   mix-blend-mode: soft-light;
   opacity: .12;
@@ -1381,7 +1394,6 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
 .sunset-home .bp-shelf-plant { filter: sepia(.17) saturate(.85) contrast(.93) brightness(.91); }
 .sunset-home .bp-lantern-body { filter: saturate(.83) contrast(.94) brightness(.91); }
 .sunset-home [data-lantern-flame] { filter: saturate(.89) brightness(.94); }
-.sunset-home .lamb .bitpoly-lamb { filter: sepia(.08) saturate(.95); }
 
 /* Contact at the pot bases and the lantern's feet, below the animated art. */
 .sunset-home .stage > picture::after {
@@ -1393,8 +1405,4 @@ body #jornada-fullscreen:active { filter: brightness(.86); }
     radial-gradient(ellipse 6% 1.05% at 10.8% 70.35%, #2b1810a6, transparent 95%),
     radial-gradient(ellipse 4.5% .65% at 37.4% 36.75%, #2c191288, transparent 95%),
     radial-gradient(ellipse 5% .75% at 71.8% 54.45%, #2e1911a6, transparent 95%);
-}
-.sunset-home .bp-lamb-ground-shadow ellipse:first-of-type {
-  rx: 108px;
-  ry: 15px;
 }

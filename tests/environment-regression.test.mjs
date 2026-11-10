@@ -123,9 +123,12 @@ test('retained legacy outfit updates on consecutive display frames rather than a
   }finally{env.restore();}
 });
 
-test('35 percent reduction anchors the paws and preserves readable dialogue',()=>{
+test('the home lamb is laid out at final width without scaling its sprite',()=>{
   const css=readFileSync(new URL('../dist/style.css',import.meta.url),'utf8');
-  assert.ok(css.includes('transform: scale(.65); transform-origin: 50% 95.3%'));
+  const lamb=css.match(/\.sunset-home \.lamb \{([^}]+)\}/)?.[1];
+  assert.match(lamb,/width: 65%/);
+  assert.match(lamb,/width: round\(nearest, 65%, 1px\)/);
+  assert.doesNotMatch(lamb,/transform:|scale\(/);
   for(const name of ['room-sunset.png','haven-portrait.png','room-pot.png','room-shelf-matte.png'])assert.ok(!css.includes(name));
   const motion=readFileSync(new URL('../dist/bitpoly-motion.js',import.meta.url),'utf8');
   assert.ok(!motion.includes('1000/12'));
@@ -168,7 +171,7 @@ test('flame controller updates independently, respects reduced motion and dispos
 });
 
 test('support point sits in the rug center and wind is stronger than V116',()=>{
-  const ground=.496+.46*941/1671*1210/1085*.953;
+  const ground=.496+.46*941/1671*1210/1085*(.33355+.65*273/286);
   assert.ok(ground>.76&&ground<.78);
   let max=0;for(let t=0;t<30000;t+=100)max=Math.max(max,Math.abs(samplePlantJoint(t,0,'floor')));
   assert.ok(max>2);assert.ok(max<2.8);
