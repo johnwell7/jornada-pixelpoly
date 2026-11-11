@@ -15,7 +15,9 @@ test('every available skin has an original and complete atlas for every behavior
   assert.deepEqual(Object.keys(clips),expected);
   for(const [name,clip] of Object.entries(clips)) {
    assert.match(clip.src,new RegExp(`/${skin}-${name}\\.webp$`));
-   assert.ok(clip.count>12&&clip.width<=4096&&clip.height<=4096);
+   if(skin==='base'&&['neutral','sleeping'].includes(name))assert.equal(clip.count,1);
+   else assert.ok(clip.count>12);
+   assert.ok(clip.width<=4096&&clip.height<=4096);
    assert.ok(clip.columns*256===clip.width&&Math.ceil(clip.count/clip.columns)*286===clip.height);
    const bytes=readFileSync(new URL('../dist/'+clip.src,import.meta.url));
    const hash=createHash('sha256').update(bytes).digest('hex');

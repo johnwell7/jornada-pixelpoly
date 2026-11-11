@@ -4,7 +4,30 @@ Restore point: [`restore/pre-v5-sheep-100800b`](https://github.com/johnwell7/jor
 
 The previous Lar used complete outfit frames for a few short poses. Sleep held the final blink frame, the original nose puff was absent from the full-frame player, and tapping opened a conversation with buttons. The V5 player is scoped to the Lar. Scripture panels retain their established artwork and player.
 
-## Artwork
+## Standard lamb in Blender
+
+The Lar's standard lamb now uses an editable volumetric scene in
+`production/lamb-volumetric.blend`. Its timeline markers identify the 12
+behaviors. The eyes, eyelids and mouth are meshes or curves. Each pose is
+rendered from the same orthographic camera with the same floor registration.
+Irritation, contentment and drowsiness use the expression references. Rest and
+the sleeping hold each use one pose. The scripture panels use their existing
+reading artwork, and the three equipped outfits use their existing clips.
+
+Regenerate the standard lamb from the repository root:
+
+```sh
+blender -b --python-exit-code 1 --python production/render-volumetric-lamb.py
+python3 production/pack-volumetric-lamb.py
+npm run build
+```
+
+The Python packer needs Pillow. Use the Blender scene and character geometry
+for future facial work. The original 2.5D source remains available for
+comparison. Each outfit needs its own Blender authoring and renders before
+it can move to this production path.
+
+## Original V5.1 artwork
 
 There are 12 authored sequences for each of the four available skins: standard, priestly garments, Joseph's tunic and David's shepherd outfit. The 48 atlases contain 1,720 full 256 × 286 frames. Each profile uses its own stationary appearance as the identity reference and registers its own eyes, muzzle, ears, forehooves and head. Facial features are drawn into the artwork, then rendered with the head, wool, garment and accessories together. The new sequences do not play earlier clips or layer clothes over the standard frames.
 
@@ -20,7 +43,7 @@ There are 12 authored sequences for each of the four available skins: standard, 
 
 Rear support stays anchored; the original floor shadow remains in scene coordinates. The nose bubble in `reference/bitpoly-art.js` supplied the color and scale reference. It is now drawn at each skin's nostril and moves with the face as part of the sleeping frames.
 
-`production/render-alive.py` rebuilds the atlases and manifest with Pillow, NumPy and OpenCV. `--clip nuzzle` rebuilds just one behavior for all four appearances. The static references and all earlier animation files remain in the repository.
+`production/render-alive.py` now rebuilds only the three legacy outfit atlases with Pillow, NumPy and OpenCV. `--clip nuzzle` rebuilds that behavior for those outfits. The static references and all earlier animation files remain in the repository.
 
 ## Interaction
 

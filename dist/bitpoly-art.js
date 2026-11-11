@@ -61,7 +61,7 @@ export function bitpolyLamb({equipped=false, tag=false, studying=false, outfit}=
     [TUNIC_OUTFIT]: 'Ovelha com a túnica de José',
     [DAVID_OUTFIT]: 'Ovelha com o traje do pequeno pastor de Davi'
   };
-  return `<svg class="bitpoly-lamb" data-bp-rig="frames" viewBox="110 0 1085 1210" role="img" aria-label="${studying?'Ovelha lendo':labels[outfit]??'Ovelha Pixel-Poly'}">${fullLambSprite(frameManifestFor(outfit))}${dressed?compactEquipment:equipment}${readingBook}</svg>`;
+  return `<svg class="bitpoly-lamb" data-bp-rig="frames" viewBox="110 0 1085 1210" role="img" aria-label="${studying?'Ovelha lendo':labels[outfit]??'Ovelha Pixel-Poly'}">${fullLambSprite(frameManifestFor(outfit),{home:!studying})}${dressed?compactEquipment:equipment}${readingBook}</svg>`;
 }
 
 

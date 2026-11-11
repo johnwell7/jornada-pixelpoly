@@ -1,3 +1,4 @@
+import {aliveFrames} from './sheep-alive-data.js';
 import {lambFrames} from './lamb-frames-data.js';
 import {priestlyFrames} from './priestly-frames-data.js';
 import {tunicFrames} from './tunic-frames-data.js';
@@ -19,8 +20,8 @@ export function frameManifestFor(outfit) {
 }
 // Complete RGBA sprites only. No head/torso/paw masks, scales or mesh at runtime.
 let spriteSerial=0;
-export function fullLambSprite(manifest=lambFrames){
- const p=manifest.pages[0],id=`complete-frame-${++spriteSerial}`;
+export function fullLambSprite(manifest=lambFrames,{home=false}={}){
+ const p=home&&manifest===lambFrames?aliveFrames.base.neutral:manifest.pages[0],id=`complete-frame-${++spriteSerial}`;
  const outfit=[...outfitFrames].find(([,frames])=>frames===manifest)?.[0];
  const outfitAttribute=outfit?` data-lamb-outfit="${outfit}"`:'';
  return `<defs><clipPath id="${id}"><rect x="110" y="0" width="1085" height="1210"/></clipPath></defs><g data-lamb-frame-viewport=""${outfitAttribute} clip-path="url(#${id})"><image data-lamb-frame-image="" href="${p.src}" x="110" y="0" width="${p.width*1085/256}" height="${p.height*1210/286}"/></g>`;
