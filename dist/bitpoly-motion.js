@@ -106,7 +106,7 @@ const pickNext=(count,previous,random)=>((previous+1+Math.floor(random()*(count-
 export function animateBitpolyLamb(lamb,{studying=false,alive=false,random=Math.random}={}){
   const frameViewport=lamb.querySelector('[data-lamb-frame-viewport]');
   if(frameViewport) {
-    if(alive&&!studying)return animateSheepAlive(lamb,{outfit:frameViewport.dataset.lambOutfit,random});
+    if(alive&&!studying&&frameViewport.dataset.lambOutfit)return animateSheepAlive(lamb,{outfit:frameViewport.dataset.lambOutfit,random});
     return animateFullLamb(lamb,{studying,random});
   }
   const media=matchMedia('(prefers-reduced-motion: reduce)');
