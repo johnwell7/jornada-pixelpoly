@@ -1,4 +1,5 @@
 import {animateFullLamb} from './lamb-frames.js';
+import {animateSheepAlive} from './sheep-alive.js';
 // A fresh, sampled cutout animation system for V115. No legacy keyframes/timelines.
 export const BITPOLY_IDLE_MS = 14000;
 export const BITPOLY_ACTION_MS = 1100;
@@ -76,7 +77,7 @@ export function createPlantWindTracks(plants,{random=Math.random}={}){
       const g=t.gust,age=clock-g.start-i*g.lag,u=age/g.duration;
       if(u<=0||u>=1)return 0;
       const envelope=Math.sin(Math.PI*u)**2;
-      const amplitude=t.kind==='floor'?2.25:t.kind==='shelf'?1.65:1.25;
+      const amplitude=t.kind==='floor'?3.2:t.kind==='shelf'?2.45:1.9;
       return amplitude*g.strength*g.direction*envelope*(.7+.3*Math.sin(age/1700*g.speed+g.phase-i*.4));
     }));
   }};
@@ -102,8 +103,12 @@ export function animateBitpolyPlants(stage,{random=Math.random}={}){
 const greetings=['welcome-listen','welcome-peek','welcome-nod','welcome-perk'];
 let lastGreeting=-1;
 const pickNext=(count,previous,random)=>((previous+1+Math.floor(random()*(count-1)))%count);
-export function animateBitpolyLamb(lamb,{studying=false,random=Math.random}={}){
-  if(lamb.querySelector('[data-lamb-frame-viewport]'))return animateFullLamb(lamb,{studying,random});
+export function animateBitpolyLamb(lamb,{studying=false,alive=false,random=Math.random}={}){
+  const frameViewport=lamb.querySelector('[data-lamb-frame-viewport]');
+  if(frameViewport) {
+    if(alive&&!studying)return animateSheepAlive(lamb,{outfit:frameViewport.dataset.lambOutfit,random});
+    return animateFullLamb(lamb,{studying,random});
+  }
   const media=matchMedia('(prefers-reduced-motion: reduce)');
   lamb.classList.add('bitpoly-motion');
   const parts=Object.fromEntries([...lamb.querySelectorAll('[data-bp-part]')].map(n=>[n.dataset.bpPart,n]));

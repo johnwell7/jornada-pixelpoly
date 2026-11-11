@@ -22,7 +22,7 @@ test('independent plant gusts include rest, stagger their starts and never move 
   assert.ok(moving.filter(Boolean).length<=2);
   moving.forEach((on,i)=>{if(on&&!previous[i])starts[i].push(t);previous[i]=on;});
   poses.forEach((angles,i)=>angles.forEach((a,j)=>{
-   assert.ok(Number.isFinite(a)&&Math.abs(a)<=2.25);
+   assert.ok(Number.isFinite(a)&&Math.abs(a)<=[1.9,2.45,3.2][i]);
    if(previousAngles)maxChange=Math.max(maxChange,Math.abs(a-previousAngles[i][j]));
   }));previousAngles=poses;
  }

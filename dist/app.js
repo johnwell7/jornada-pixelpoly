@@ -45,6 +45,7 @@ const panel=document.querySelector('#panel');
 const world=document.querySelector('#world');
 let view='home', toastTimer, returnFocus=null, pendingImport=null;
 const companion = homeCompanion(world);
+world.addEventListener('jornada-lamb-cue', event => companion.react(event.detail));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const action=(label,act,kind='primary')=>`<button class="button ${kind}" data-action="${act}">${label}</button>`;
 const routeButton=(label,route,kind='secondary')=>`<button class="button ${kind}" data-view="${route}">${label}</button>`;
@@ -61,15 +62,11 @@ function home(){return `<div class="game-shell sunset-home"><header class="hud">
   <button class="lamb" data-action="pet" aria-label="Pet and talk to your lamb" aria-controls="home-dialogue" aria-expanded="false">${dressedSheep()}</button>
 </div>
 <div class="home-dialogue" id="home-dialogue" hidden>
-    <p data-home-line role="status"></p>
-    <div class="home-dialogue-options" data-home-options hidden>
-      <button type="button" data-home-choice></button>
-      <button type="button" data-home-later data-action="home-dismiss">Maybe later</button>
-      <button class="home-dialogue-close" type="button" data-action="home-dismiss" aria-label="Close conversation">×</button>
-    </div>
+  <button type="button" class="home-quote" data-action="home-dismiss" aria-label="Dismiss speech"><span data-home-line role="status"></span></button>
+  <button type="button" class="home-speech-link" data-home-choice hidden>Open the shelf</button>
 </div>${!state.found && scripture.libraryEnabled()?`<button class="found-object" data-view="discover" aria-label="Discover the curious brass object">${icon('spark')}<span>Something new</span></button>`:''}</div><div id="completion-note" class="completion-note" role="status"></div></main><nav class="dock" aria-label="Your haven"><button data-view="home" aria-label="Home" class="active">${icon('home')}<span>Home</span></button><button data-view="inventory">${icon('bag')}<span>Satchel</span>${(state.equipped || state.missionaryTagEquipped || state.outfit) ? `<i role="img" aria-label="${Number(state.equipped) + Number(state.missionaryTagEquipped) + Number(Boolean(state.outfit))} equipped"></i>` : '' }</button><button data-view="library">${icon('book')}<span>Study</span></button><button data-view="map">${icon('map')}<span>Journey</span></button></nav></div>`;}
 let sheepMotion, plantMotion, lanternMotion;
-function renderWorld(){sheepMotion?.dispose();plantMotion?.dispose();lanternMotion?.dispose();world.innerHTML=home();world.inert=panel.open;const lamb=world.querySelector(".lamb"),stage=world.querySelector(".stage");sheepMotion=animateBitpolyLamb(lamb);plantMotion=animateBitpolyPlants(stage);lanternMotion=animateBitpolyLantern(stage);bindLambDrag(stage,lamb);}
+function renderWorld(){sheepMotion?.dispose();plantMotion?.dispose();lanternMotion?.dispose();world.innerHTML=home();world.inert=panel.open;const lamb=world.querySelector(".lamb"),stage=world.querySelector(".stage");sheepMotion=animateBitpolyLamb(lamb,{alive:true});plantMotion=animateBitpolyPlants(stage);lanternMotion=animateBitpolyLantern(stage);bindLambDrag(stage,lamb);}
 function bindLambDrag(stage, lamb) {
   stage.style.touchAction = 'pinch-zoom';
   let gesture;
@@ -116,7 +113,6 @@ function bindLambDrag(stage, lamb) {
                    (y - body.top - body.height / 2) / reachY) <= 1) {
       gesture.petted = true;
       sheepMotion.pet();
-      companion.touch();
     }
   });
 
@@ -456,7 +452,7 @@ function toggleArtifactEquipment() {
     if (equipped) companion.note('outfit');
     world.querySelector('.lamb').innerHTML = dressedSheep();
     sheepMotion?.dispose();
-    sheepMotion = animateBitpolyLamb(world.querySelector('.lamb'));
+    sheepMotion = animateBitpolyLamb(world.querySelector('.lamb'),{alive:true});
     const equipment = world.querySelector('.dock [data-view="inventory"]');
     equipment.querySelector('i')?.remove();
     const count = Number(state.equipped) + Number(state.missionaryTagEquipped) + Number(Boolean(state.outfit));
@@ -515,8 +511,8 @@ document.addEventListener('click', event => {
     case 'journal-section': selectJournalSection(target); break;
     case 'close': closePanel(); break;
     case 'pet':
-      sheepMotion.pet();
-      companion.touch(true);
+      if (sheepMotion.tap) sheepMotion.tap(event.detail > 0);
+      else { sheepMotion.pet(); companion.react('talk'); }
       break;
     case 'home-dismiss': companion.dismiss(); break;
     case 'home-library': openHomeLibrary(target); break;
