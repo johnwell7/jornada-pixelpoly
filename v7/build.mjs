@@ -8,7 +8,7 @@ export function bundle(index, css, sources) {
       '<script type="module">\n' + script + '</script>');
 }
 
-const sources = ['navigation.mjs','art/palette.mjs','art/aliases.mjs','art/room.mjs','art/lamb.mjs','game.mjs'];
+const sources = ['navigation.mjs','behavior.mjs','art/palette.mjs','art/aliases.mjs','art/room.mjs','art/lamb.mjs','game.mjs'];
 const read = file => readFile(new URL(file, import.meta.url), 'utf8');
 const [index, css, ...modules] = await Promise.all(['index.html', 'room.css', ...sources].map(file => 
   file === 'art/aliases.mjs' ? 'const red = burgundy;\nconst w = wood;\n' : read(file)

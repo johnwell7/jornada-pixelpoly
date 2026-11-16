@@ -1,96 +1,135 @@
 import { bakeRoom, drawLights, drawScenery } from './art/room.mjs';
 import { createSheet, drawLamb, lambShadow } from './art/lamb.mjs';
-import { createLamb, follow, go, orderAt, step, targets, world } from './navigation.mjs';
+import { createBehavior } from './behavior.mjs';
+import { createLamb, follow, go, orderAt, step, world } from './navigation.mjs';
 
 const canvas = document.querySelector('#room');
 const hint = document.querySelector('#hint');
+const bubble = document.querySelector('#bubble');
+const inviteButton = document.querySelector('#invite');
+const petButton = document.querySelector('#pet');
 const g = canvas.getContext('2d', { alpha: false });
 const offscreen = () => document.createElement('canvas');
 const room = bakeRoom(offscreen());
 const sheet = createSheet(offscreen());
 const lamb = createLamb();
-const camera = { x: 0, y: 0 };
-const keys = new Set();
+const behavior = createBehavior(lamb);
+const camera = { x:0, y:0 };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const controls = {
-  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-  w: 'up', s: 'down', a: 'left', d: 'right'
-};
-const messages = {
-  window: 'A ovelha observa a luz nas colinas.',
-  bed: 'A ovelha se acomoda perto da cama.'
-};
-const defaultHint = 'Toque no chão para andar.';
+const debug = new URLSearchParams(location.search).get('debug') === '1';
+let frameScale, layout, stroke;
+let time = 0, bubbleUntil = 0, previous, invitationId = null;
 
 function resize() {
-  const { width, height } = canvas.parentElement.getBoundingClientRect();
-  const scale = Math.max(1, Math.round(Math.min(height / 172, width / 143)), Math.ceil(width / 330));
-  canvas.width = Math.max(1, Math.min(world.width, Math.floor(width / scale)));
-  canvas.height = Math.max(1, Math.min(world.height, Math.floor(height / scale)));
-  canvas.style.width = canvas.width * scale + 'px';
-  canvas.style.height = canvas.height * scale + 'px';
+  layout = canvas.parentElement.getBoundingClientRect();
+  const { width,height } = layout;
+  frameScale = Math.max(1, Math.floor(width / world.width),
+    Math.round(Math.min(height / (width >= height ? 244 : 172), width / 143)));
+  canvas.width = Math.max(1, Math.min(world.width, Math.floor(width / frameScale)));
+  canvas.height = Math.max(1, Math.min(world.height, Math.floor(height / frameScale)));
+  canvas.style.width = canvas.width * frameScale+'px';
+  canvas.style.height = canvas.height * frameScale+'px';
   g.imageSmoothingEnabled = false;
-  follow(camera, lamb, canvas, Infinity);
-}
-function choose(id) {
-  if (go(lamb, targets[id], id)) {
-    hint.textContent = id === 'window' ? 'A caminho da janela…' : 'A caminho da cama…';
-  }
+  follow(camera,lamb,canvas,Infinity);
 }
 
-canvas.addEventListener('pointerdown', event => {
-  if (!event.isPrimary || event.button !== 0) return;
+function toWorld(event) {
   const rect = canvas.getBoundingClientRect();
-  const x = Math.round(camera.x) + (event.clientX - rect.left) * canvas.width / rect.width;
-  const y = Math.round(camera.y) + (event.clientY - rect.top) * canvas.height / rect.height;
-  if (x >= 158 && x <= 265 && y >= 30 && y <= 138) choose('window');
-  else if (x >= 300 && x <= 404 && y >= 93 && y <= 226) choose('bed');
-  else if (go(lamb, { x, y })) hint.textContent = defaultHint;
-});
-document.querySelectorAll('[data-target]').forEach(button => {
-  button.addEventListener('click', () => choose(button.dataset.target));
-});
-addEventListener('keydown', event => {
-  const key = event.key.toLowerCase();
-  if (!controls[event.key] && !controls[key] || event.altKey || event.ctrlKey || event.metaKey) return;
-  event.preventDefault();
-  if (!keys.size) hint.textContent = defaultHint;
-  keys.add(event.key.startsWith('Arrow') ? event.key : key);
-});
-addEventListener('keyup', event => {
-  keys.delete(event.key.startsWith('Arrow') ? event.key : event.key.toLowerCase());
-});
-addEventListener('blur', () => keys.clear());
-addEventListener('resize', resize);
-
-function input() {
-  const active = new Set([...keys].map(key => controls[key]));
   return {
-    x: Number(active.has('right')) - Number(active.has('left')),
-    y: Number(active.has('down')) - Number(active.has('up'))
+    x: Math.round(camera.x)+(event.clientX-rect.left)*canvas.width/rect.width,
+    y: Math.round(camera.y)+(event.clientY-rect.top)*canvas.height/rect.height
   };
 }
-function draw(time) {
+function touchesLamb(point) {
+  const padding = Math.max(15,22/frameScale);
+  const low = ['sleep','lie','stir'].includes(lamb.pose);
+  return Math.abs(point.x-lamb.x) <= padding && point.y >= lamb.y-(low?21:34) && point.y <= lamb.y+6;
+}
+function giveAffection(stroking = false) {
+  if (debug) return;
+  hint.hidden = true;
+  const line = behavior.pet(stroking);
+  if (line) {
+    bubble.textContent = line;
+    bubble.toggleAttribute('data-visible', true);
+    bubbleUntil = time+2.2;
+  }
+}
+canvas.addEventListener('pointerdown', event => {
+  if (!event.isPrimary || event.button !== 0) return;
+  const point = toWorld(event);
+  if (debug) {
+    go(lamb,point);
+  } else if (touchesLamb(point)) {
+    stroke = { id:event.pointerId, x:event.clientX, y:event.clientY, time };
+    canvas.setPointerCapture(event.pointerId);
+    giveAffection();
+  }
+});
+canvas.addEventListener('pointermove', event => {
+  if (stroke?.id !== event.pointerId || time-stroke.time < .28 ||
+    Math.hypot(event.clientX-stroke.x,event.clientY-stroke.y) < 8 ||
+    !touchesLamb(toWorld(event))) return;
+  stroke = { id:event.pointerId, x:event.clientX, y:event.clientY, time };
+  giveAffection(true);
+});
+for (const name of ['pointerup','pointercancel','lostpointercapture']) {
+  canvas.addEventListener(name,event => { if (stroke?.id === event.pointerId) stroke = null; });
+}
+petButton.addEventListener('click', () => giveAffection());
+inviteButton.addEventListener('click', () => {
+  if (behavior.invite(invitationId)) {
+    hint.hidden = true;
+    inviteButton.hidden = true;
+  }
+});
+addEventListener('resize',resize);
+
+function positionInterface() {
+  const left = (layout.width-canvas.width*frameScale)/2;
+  const top = (layout.height-canvas.height*frameScale)/2;
+  const x = left+(Math.round(lamb.x)-Math.round(camera.x))*frameScale;
+  const y = top+(Math.round(lamb.y)-Math.round(camera.y))*frameScale;
+  petButton.style.left = x+'px';
+  petButton.style.top = y-14*frameScale+'px';
+  if (bubbleUntil) {
+    bubble.style.left = Math.max(60,Math.min(layout.width-60,x))+'px';
+    bubble.style.top = Math.max(66,y-36*frameScale)+'px';
+    if (time >= bubbleUntil) {
+      bubble.toggleAttribute('data-visible',false);
+      bubbleUntil = 0;
+    }
+  }
+  if (time > 11) hint.hidden = true;
+  const suggestion = hint.hidden && !debug ? behavior.suggestion() : null;
+  if (suggestion?.id !== invitationId || suggestion === null && !inviteButton.hidden) {
+    invitationId = suggestion?.id ?? null;
+    inviteButton.hidden = !suggestion;
+    if (suggestion) inviteButton.textContent = suggestion.label;
+  }
+}
+function draw(visibleTime) {
   g.save();
-  g.translate(-Math.round(camera.x), -Math.round(camera.y));
+  g.translate(-Math.round(camera.x),-Math.round(camera.y));
   g.drawImage(room,0,0);
   for (const id of orderAt(lamb.y)) {
     if (id === 'lamb') {
       lambShadow(g,lamb);
       drawLamb(g,sheet,lamb);
-    } else drawScenery(g,id,time);
+    } else drawScenery(g,id,visibleTime);
   }
-  drawLights(g,time);
+  drawLights(g,visibleTime);
   g.restore();
 }
-let previous;
 function frame(now) {
-  const dt = Math.min(.035, (now - (previous ?? now)) / 1000);
+  const dt = Math.min(.035,(now-(previous??now))/1000);
   previous = now;
-  const arrival = step(lamb, dt, input());
-  if (arrival) hint.textContent = messages[arrival];
-  follow(camera, lamb, canvas, dt);
-  draw(reducedMotion.matches ? 0 : now / 1000);
+  time += dt;
+  if (debug) step(lamb,dt);
+  else behavior.update(dt);
+  follow(camera,lamb,canvas,dt);
+  draw(reducedMotion.matches ? 0 : time);
+  positionInterface();
   requestAnimationFrame(frame);
 }
 resize();

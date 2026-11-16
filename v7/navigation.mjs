@@ -11,7 +11,9 @@ export const objects = [
 ];
 export const targets = {
   window: { x: 211, y: 155, face: 'north', pose: 'look' },
-  bed: { x: 335, y: 248, face: 'east', pose: 'sit' }
+  bed: { x: 346, y: 248, face: 'east', pose: 'sit' },
+  rug: { x: 196, y: 242, face: 'south', pose: 'sit' },
+  plant: { x: 176, y: 181, face: 'west', pose: 'look' }
 };
 
 const radius = 6;
@@ -107,9 +109,9 @@ export function findPath(origin, destination) {
 }
 
 export function createLamb() {
-  return { ...start, face: 'south', pose: 'idle', elapsed: 0, distance: 0, path: [], target: null };
+  return { ...start, face: 'south', pose: 'idle', elapsed: 0, distance: 0, speed: 0, path: [], target: null };
 }
-function setPose(lamb, pose) {
+export function setPose(lamb, pose) {
   if (lamb.pose !== pose) {
     lamb.pose = pose;
     lamb.elapsed = 0;
@@ -117,6 +119,7 @@ function setPose(lamb, pose) {
   }
 }
 export function go(lamb, destination, target = null) {
+  lamb.speed = 0;
   lamb.path = findPath(lamb, destination);
   lamb.target = lamb.path.length ? target : null;
   return lamb.path.length > 0;
@@ -147,7 +150,11 @@ export function step(lamb, dt, input = { x: 0, y: 0 }) {
   }
 
   if (lamb.path.length) {
-    let remaining = budget;
+    const remainingDistance = distance(lamb, lamb.path[0]) +
+      lamb.path.slice(1).reduce((total, p, i) => total + distance(lamb.path[i], p), 0);
+    const approachSpeed = Math.max(12, Math.sqrt(2 * 107 * remainingDistance));
+    lamb.speed = Math.min(54, approachSpeed, lamb.speed + 107 * dt);
+    let remaining = lamb.speed * dt;
     while (remaining > 0 && lamb.path.length) {
       const next = lamb.path[0];
       const d = distance(lamb, next);
@@ -159,6 +166,7 @@ export function step(lamb, dt, input = { x: 0, y: 0 }) {
       if (d <= 0.0001 || distance(lamb, next) <= 0.0001) lamb.path.shift();
     }
     if (lamb.path.length) return null;
+    lamb.speed = 0;
     const arrival = lamb.target;
     lamb.target = null;
     if (arrival) {
@@ -174,8 +182,10 @@ export function step(lamb, dt, input = { x: 0, y: 0 }) {
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 export function follow(camera, lamb, view, dt) {
-  const x = clamp(lamb.x - view.width / 2, 0, world.width - view.width);
-  const y = clamp(lamb.y - view.height * 0.64, 0, world.height - view.height);
+  const margin = dt === Infinity ? 0 : 12;
+  const anchor = (current, ideal) => clamp(current, ideal-margin, ideal+margin);
+  const x = clamp(anchor(camera.x, lamb.x - view.width / 2), 0, world.width - view.width);
+  const y = clamp(anchor(camera.y, lamb.y - view.height * (view.width >= 320 ? 0.91 : 0.65)), 0, world.height - view.height);
   const amount = dt === Infinity ? 1 : 1 - Math.exp(-7 * dt);
   camera.x = clamp(camera.x + (x - camera.x) * amount, 0, world.width - view.width);
   camera.y = clamp(camera.y + (y - camera.y) * amount, 0, world.height - view.height);

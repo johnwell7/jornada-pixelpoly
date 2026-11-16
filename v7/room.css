@@ -1,25 +1,38 @@
 :root {
   color-scheme: dark;
   font-family: Georgia, serif;
-  color: #f5dfbd;
-  background: #211a23;
+  color: #f7dfb5;
+  background: #231922;
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
-main { position: relative; height: 100vh; height: 100dvh; overflow: hidden; background: #2b202a; }
+main { position: relative; height: 100vh; height: 100dvh; overflow: hidden; background: #281e27; }
 canvas { display: block; position: absolute; inset: 0; margin: auto; image-rendering: pixelated; touch-action: none; }
-header, section { position: absolute; left: 0; right: 0; pointer-events: none; text-align: center; }
-header { top: max(14px, env(safe-area-inset-top)); }
-h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 2.2rem); font-weight: normal; letter-spacing: .12em; text-shadow: 0 2px #201822, 0 4px #201822; }
-section {
-  bottom: 0;
-  padding: 24px 12px max(12px, env(safe-area-inset-bottom));
-  background: linear-gradient(transparent, #211a23e8);
+header {
+  position: absolute; inset: 0 0 auto; padding-top: max(14px, env(safe-area-inset-top));
+  text-align: center; pointer-events: none;
 }
-p { margin: 0 auto 8px; min-height: 1.2em; font-size: .96rem; text-shadow: 0 1px 2px #201822; }
-nav { display: flex; gap: 8px; justify-content: center; }
-button {
-  pointer-events: auto; font: inherit; color: inherit; min-height: 44px;
-  min-width: 76px; padding: 5px 16px; border: 1px solid #a87c57; background: #35262d;
+h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 2.2rem); font-weight: normal; letter-spacing: .12em; text-shadow: 0 2px #261c25, 0 4px #261c25; }
+footer {
+  position: absolute; inset: auto 0 0; padding: 12px 12px max(10px, env(safe-area-inset-bottom));
+  pointer-events: none; text-align: center;
 }
-button:hover, button:focus-visible { border-color: #f5dfbd; background: #503441; }
+p { margin: 0; }
+#hint { display: inline-block; background: #2b2029e8; padding: 5px 10px; font-size: .86rem; }
+#hint[hidden] { display: none; }
+button { font: inherit; color: inherit; padding: 7px 13px; border: 1px solid #aa7953; background: #38272e; }
+button:hover, button:focus-visible { border-color: #f7dfb5; background: #533744; }
+#invite { pointer-events: auto; min-height: 44px; font-size: .94rem; }
+#pet {
+  position: absolute; width: 44px; height: 44px; padding: 0;
+  opacity: 0; pointer-events: none; transform: translate(-50%, -50%);
+}
+#pet:focus-visible { opacity: 1; outline: 2px solid #f7dfb5; background: #271b2340; }
+#bubble {
+  position: absolute; opacity: 0; transform: translate(-50%,-100%);
+  width: max-content; max-width: 175px; padding: 6px 9px; color: #402a2b;
+  background: #f3dcb1; border: 1px solid #604236; font-size: .88rem;
+  transition: opacity .2s ease, translate .2s ease; translate: 0 3px; pointer-events: none;
+}
+#bubble[data-visible] { opacity: 1; translate: 0 0; }
+@media (prefers-reduced-motion: reduce) { #bubble { transition: none; } }

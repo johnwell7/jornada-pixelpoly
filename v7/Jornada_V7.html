@@ -7,39 +7,51 @@
 :root {
   color-scheme: dark;
   font-family: Georgia, serif;
-  color: #f5dfbd;
-  background: #211a23;
+  color: #f7dfb5;
+  background: #231922;
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
-main { position: relative; height: 100vh; height: 100dvh; overflow: hidden; background: #2b202a; }
+main { position: relative; height: 100vh; height: 100dvh; overflow: hidden; background: #281e27; }
 canvas { display: block; position: absolute; inset: 0; margin: auto; image-rendering: pixelated; touch-action: none; }
-header, section { position: absolute; left: 0; right: 0; pointer-events: none; text-align: center; }
-header { top: max(14px, env(safe-area-inset-top)); }
-h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 2.2rem); font-weight: normal; letter-spacing: .12em; text-shadow: 0 2px #201822, 0 4px #201822; }
-section {
-  bottom: 0;
-  padding: 24px 12px max(12px, env(safe-area-inset-bottom));
-  background: linear-gradient(transparent, #211a23e8);
+header {
+  position: absolute; inset: 0 0 auto; padding-top: max(14px, env(safe-area-inset-top));
+  text-align: center; pointer-events: none;
 }
-p { margin: 0 auto 8px; min-height: 1.2em; font-size: .96rem; text-shadow: 0 1px 2px #201822; }
-nav { display: flex; gap: 8px; justify-content: center; }
-button {
-  pointer-events: auto; font: inherit; color: inherit; min-height: 44px;
-  min-width: 76px; padding: 5px 16px; border: 1px solid #a87c57; background: #35262d;
+h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 2.2rem); font-weight: normal; letter-spacing: .12em; text-shadow: 0 2px #261c25, 0 4px #261c25; }
+footer {
+  position: absolute; inset: auto 0 0; padding: 12px 12px max(10px, env(safe-area-inset-bottom));
+  pointer-events: none; text-align: center;
 }
-button:hover, button:focus-visible { border-color: #f5dfbd; background: #503441; }
+p { margin: 0; }
+#hint { display: inline-block; background: #2b2029e8; padding: 5px 10px; font-size: .86rem; }
+#hint[hidden] { display: none; }
+button { font: inherit; color: inherit; padding: 7px 13px; border: 1px solid #aa7953; background: #38272e; }
+button:hover, button:focus-visible { border-color: #f7dfb5; background: #533744; }
+#invite { pointer-events: auto; min-height: 44px; font-size: .94rem; }
+#pet {
+  position: absolute; width: 44px; height: 44px; padding: 0;
+  opacity: 0; pointer-events: none; transform: translate(-50%, -50%);
+}
+#pet:focus-visible { opacity: 1; outline: 2px solid #f7dfb5; background: #271b2340; }
+#bubble {
+  position: absolute; opacity: 0; transform: translate(-50%,-100%);
+  width: max-content; max-width: 175px; padding: 6px 9px; color: #402a2b;
+  background: #f3dcb1; border: 1px solid #604236; font-size: .88rem;
+  transition: opacity .2s ease, translate .2s ease; translate: 0 3px; pointer-events: none;
+}
+#bubble[data-visible] { opacity: 1; translate: 0 0; }
+@media (prefers-reduced-motion: reduce) { #bubble { transition: none; } }
 </style>
 <main>
-  <canvas id="room" aria-label="Quarto da ovelha em pixel art. Use as setas para andar."></canvas>
+  <canvas id="room" aria-label="Lar da ovelha em pixel art."></canvas>
   <header><h1>Jornada</h1></header>
-  <section aria-label="Destinos">
-    <p id="hint" aria-live="polite">Toque no chão para andar.</p>
-    <nav aria-label="Ir até">
-      <button data-target="window">Janela</button>
-      <button data-target="bed">Cama</button>
-    </nav>
-  </section>
+  <button id="pet" type="button" aria-label="Fazer carinho na ovelha"></button>
+  <p id="bubble" role="status" aria-live="polite"></p>
+  <footer>
+    <p id="hint">Toque na ovelha para fazer carinho.</p>
+    <button id="invite" type="button" hidden></button>
+  </footer>
 </main>
 <script type="module">
 const world = { width: 448, height: 320 };
@@ -55,7 +67,9 @@ const objects = [
 ];
 const targets = {
   window: { x: 211, y: 155, face: 'north', pose: 'look' },
-  bed: { x: 335, y: 248, face: 'east', pose: 'sit' }
+  bed: { x: 346, y: 248, face: 'east', pose: 'sit' },
+  rug: { x: 196, y: 242, face: 'south', pose: 'sit' },
+  plant: { x: 176, y: 181, face: 'west', pose: 'look' }
 };
 
 const radius = 6;
@@ -151,7 +165,7 @@ function findPath(origin, destination) {
 }
 
 function createLamb() {
-  return { ...start, face: 'south', pose: 'idle', elapsed: 0, distance: 0, path: [], target: null };
+  return { ...start, face: 'south', pose: 'idle', elapsed: 0, distance: 0, speed: 0, path: [], target: null };
 }
 function setPose(lamb, pose) {
   if (lamb.pose !== pose) {
@@ -161,6 +175,7 @@ function setPose(lamb, pose) {
   }
 }
 function go(lamb, destination, target = null) {
+  lamb.speed = 0;
   lamb.path = findPath(lamb, destination);
   lamb.target = lamb.path.length ? target : null;
   return lamb.path.length > 0;
@@ -191,7 +206,11 @@ function step(lamb, dt, input = { x: 0, y: 0 }) {
   }
 
   if (lamb.path.length) {
-    let remaining = budget;
+    const remainingDistance = distance(lamb, lamb.path[0]) +
+      lamb.path.slice(1).reduce((total, p, i) => total + distance(lamb.path[i], p), 0);
+    const approachSpeed = Math.max(12, Math.sqrt(2 * 107 * remainingDistance));
+    lamb.speed = Math.min(54, approachSpeed, lamb.speed + 107 * dt);
+    let remaining = lamb.speed * dt;
     while (remaining > 0 && lamb.path.length) {
       const next = lamb.path[0];
       const d = distance(lamb, next);
@@ -203,6 +222,7 @@ function step(lamb, dt, input = { x: 0, y: 0 }) {
       if (d <= 0.0001 || distance(lamb, next) <= 0.0001) lamb.path.shift();
     }
     if (lamb.path.length) return null;
+    lamb.speed = 0;
     const arrival = lamb.target;
     lamb.target = null;
     if (arrival) {
@@ -218,14 +238,151 @@ function step(lamb, dt, input = { x: 0, y: 0 }) {
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 function follow(camera, lamb, view, dt) {
-  const x = clamp(lamb.x - view.width / 2, 0, world.width - view.width);
-  const y = clamp(lamb.y - view.height * 0.64, 0, world.height - view.height);
+  const margin = dt === Infinity ? 0 : 12;
+  const anchor = (current, ideal) => clamp(current, ideal-margin, ideal+margin);
+  const x = clamp(anchor(camera.x, lamb.x - view.width / 2), 0, world.width - view.width);
+  const y = clamp(anchor(camera.y, lamb.y - view.height * (view.width >= 320 ? 0.91 : 0.65)), 0, world.height - view.height);
   const amount = dt === Infinity ? 1 : 1 - Math.exp(-7 * dt);
   camera.x = clamp(camera.x + (x - camera.x) * amount, 0, world.width - view.width);
   camera.y = clamp(camera.y + (y - camera.y) * amount, 0, world.height - view.height);
 }
 function orderAt(y) {
   return [...objects, { id: 'lamb', y }].sort((a,b) => a.y - b.y).map(({ id }) => id);
+}
+
+
+const seconds = { window: [5, 10], plant: [3, 6], rug: [4, 9], bed: [13, 25] };
+const range = (rng, min, max) => min + rng() * (max-min);
+const gap = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
+const destinationName = { window: 'Observar a janela?', bed: 'Descansar perto da cama?' };
+
+function createBehavior(lamb, random = Math.random) {
+  let mode = 'calm', remaining = range(random, 3, 6);
+  let sleepiness = range(random, .12, .26), destination = null, last = 'rug';
+  let invitation = null, interaction = null, recentlyTouched = [];
+  let clock = 0, sinceSpoke = -Infinity;
+  const visits = { window: 0, plant: 0, rug: 0, bed: 0 };
+  setPose(lamb, 'sit');
+
+  function enter(next, pose, time) {
+    mode = next;
+    remaining = time;
+    setPose(lamb, pose);
+  }
+
+  function travel(id) {
+    destination = id;
+    if (go(lamb, targets[id], id)) mode = 'walking';
+    else {
+      destination = null;
+      enter('calm', 'idle', range(random, 2, 4));
+    }
+  }
+
+  function choose() {
+    const weights = {
+      window: visits.window ? 2.1 : 8,
+      plant: visits.window ? 1.25 : .32,
+      rug: gap(lamb,targets.rug) < 22 ? .18 : .9,
+      bed: sleepiness >= .56 ? 1 + sleepiness ** 2 * 8 : .02
+    };
+    if (last) weights[last] *= .10;
+    if (sleepiness > .82) weights.bed *= 2.6;
+    if (invitation && clock <= invitation.until) weights[invitation.id] += 6;
+    const entries = Object.entries(weights);
+    let pick = random() * entries.reduce((sum,[,value]) => sum+value,0);
+    const selected = entries.find(([,value]) => (pick -= value) < 0)?.[0] ?? 'window';
+    invitation = null;
+    if (selected === 'bed') {
+      destination = 'bed';
+      lamb.face = 'east';
+      enter('drowsy','yawn',range(random,1.2,1.8));
+    } else if (selected === 'rug' && gap(lamb,targets.rug) < 12) {
+      enter('playful','perk',range(random,1.1,2.3));
+    } else {
+      travel(selected);
+    }
+  }
+
+  function update(dt) {
+    clock += dt;
+    if (interaction) {
+      interaction.remaining -= dt;
+      lamb.elapsed += dt;
+      if (interaction.remaining <= 0) {
+        const { pose, face, elapsed } = interaction.resume;
+        Object.assign(lamb,{pose,face,elapsed});
+        interaction = null;
+      }
+      return;
+    }
+    sleepiness = Math.max(0, Math.min(1, sleepiness + dt * (mode === 'sleeping' ? -.05 : .031)));
+    const arrived = step(lamb,dt);
+    if (arrived && mode === 'walking') {
+      last = arrived;
+      visits[arrived]++;
+      if (arrived === 'bed') enter('settling','sit',range(random,1.0,1.65));
+      else if (arrived === 'rug') enter('calm','sit',range(random,...seconds.rug));
+      else enter('curious','look',range(random,...seconds[arrived]));
+      return;
+    }
+    if (mode === 'walking') return;
+    remaining -= dt;
+    if (remaining > 0) return;
+    switch (mode) {
+      case 'drowsy':
+        travel(destination);
+        break;
+      case 'settling':
+        enter('lying','lie',.65);
+        break;
+      case 'lying':
+        enter('sleeping','sleep',range(random,...seconds.bed));
+        break;
+      case 'sleeping':
+        enter('waking','wake',.9);
+        break;
+      case 'waking':
+        enter('calm','sit',range(random,3,6));
+        break;
+      default:
+        choose();
+    }
+  }
+
+  function pet(stroking = false) {
+    recentlyTouched = recentlyTouched.filter(time => clock-time < 1.4);
+    if (!stroking) recentlyTouched.push(clock);
+    const bothered = recentlyTouched.length >= 4;
+    if (!interaction) {
+      interaction = { resume: { pose:lamb.pose, face:lamb.face, elapsed:lamb.elapsed }, remaining:0 };
+      lamb.speed = 0;
+    }
+    const resting = ['lying','sleeping'].includes(mode);
+    const pose = resting ? 'stir' : bothered ? 'ruffled' : 'pet';
+    if (!resting) lamb.face = 'south';
+    setPose(lamb,pose);
+    interaction.remaining = bothered ? .8 : 1.05;
+    if (stroking || clock-sinceSpoke < 18 || !bothered && random() > .22) return '';
+    sinceSpoke = clock;
+    return bothered && !resting ? 'Ei… devagarinho.' : 'Mmé.';
+  }
+
+  function suggestion() {
+    if (interaction || invitation || !['calm','curious','playful','waking'].includes(mode)) return null;
+    const id = sleepiness >= .56 ? 'bed' : 'window';
+    if (id === last || gap(lamb,targets[id]) > 129) return null;
+    return { id, label: destinationName[id] };
+  }
+
+  function invite(id) {
+    if (suggestion()?.id !== id) return false;
+    invitation = { id, until: clock+20 };
+    remaining = Math.min(remaining,range(random,1.8,3.6));
+    return true;
+  }
+
+  return { update, pet, suggestion, invite, get mode(){return interaction ? 'interacting' : mode;} };
 }
 
 const ink = '#2b2029';
@@ -287,29 +444,36 @@ const noise = (a,b) => {
 };
 
 function planks(g, x, y, width, height) {
-  rect(g, w[1], x,y,width,height);
-  const pitch = 17;
-  for (let row = 0; row < Math.ceil(height / pitch); row++) {
-    const top = y + row * pitch;
-    const h = Math.min(pitch,height - row*pitch);
-    const offset = row * 29 % 71;
-    for (let col = -1; col <= width / 71; col++) {
-      const left = Math.max(x, x + col * 71 + offset);
-      const right = Math.min(x + width, x + (col+1)*71 + offset);
-      const span = right-left;
-      if (span <= 3) continue;
-      const tone = 3 + Math.floor(noise(col,row)*3);
-      rect(g, w[tone], left,top,span-1,h-1);
-      rect(g, w[tone+1], left+1,top,span-2,1);
-      rect(g, w[tone-1], left+1,top+h-3,span-2,2);
-      for (let grain = 0; grain < 6; grain++) {
-        const gx = Math.floor(noise(col*8+grain,row)*Math.max(1,span-10));
-        const gy = Math.floor(noise(row,col*9+grain)*Math.max(1,h-5));
-        const length = Math.min(span-gx-2, 4+Math.floor(noise(grain,col+row)*22));
-        if (length > 0) rect(g,w[tone+(grain%3 === 0 ? 1 : -1)],left+gx,top+gy+2,length,1);
+  rect(g,'#493039',x,y,width,height);
+  const colors = ['#765047','#81564b','#8a5d4d','#92624e','#9d6b52'];
+  let top = y;
+  for (let row = 0; top < y+height; row++) {
+    const h = Math.min(12+Math.floor(row*.95),y+height-top);
+    const offset = row*47 % 91;
+    for (let col = -1; col <= width/91; col++) {
+      const left = x+col*91+offset;
+      const clip = value => Math.max(x,Math.min(x+width,value));
+      const r = left+91;
+      const a = clip(left+5), b = clip(r+4), c = clip(r-2), d = clip(left-1);
+      if (b-a < 2 && c-d < 2) continue;
+      const tone = Math.floor(noise(col,row)*colors.length);
+      shape(g,colors[tone],[[a,top],[b,top],[c,top+h-1],[d,top+h-1]]);
+      if (b-a > 3) rect(g,'#ad7958',a+1,top,b-a-3,1);
+      if (c-d > 3) rect(g,'#64413e',d+1,top+h-2,c-d-3,1);
+      const innerX = Math.max(a,d)+3;
+      const innerW = Math.max(0,Math.min(b,c)-innerX-4);
+      for (let grain = 0; grain < 8; grain++) {
+        const gx = Math.floor(noise(col*8+grain,row)*innerW);
+        const gy = Math.floor(noise(row,col*11+grain)*Math.max(1,h-5));
+        const length = Math.min(innerW-gx, 3+Math.floor(noise(grain,col+row)*26));
+        if (length > 0) rect(g,grain%3 ? '#7b5146' : '#ac7658',innerX+gx,top+gy+2,length,1);
       }
-      if (span > 24) pixels(g,w[tone-2],[[left+3,top+4,1,1],[right-5,top+h-5,1,1]]);
+      if (innerW > 27) {
+        rect(g,'#604143',innerX+2,top+h-5,2,1);
+        rect(g,'#b17c5c',innerX+3,top+h-4,2,1);
+      }
     }
+    top+=h;
   }
 }
 
@@ -337,8 +501,12 @@ function window(g) {
   pixels(g,'#89a575',[[x+14,y+51,10,2],[x+27,y+47,8,1],[x+66,y+52,12,1],[x+80,y+49,5,2]]);
   pixels(g,w[2],[[x+46,y+7,5,54],[x+7,y+35,84,4]]);
   pixels(g,w[6],[[x+46,y+8,1,51],[x+8,y+35,82,1]]);
-  beam(g,x-6,y+60,110,10);
-  rect(g,w[6],x-4,y+61,105,1);
+  shape(g,'#382a36',[[x+3,y+61],[x+101,y+61],[x+107,y+78],[x+8,y+78]]);
+  shape(g,w[3],[[x-11,y+60],[x+101,y+60],[x+104,y+64],[x-6,y+68]]);
+  beam(g,x-6,y+66,110,8);
+  pixels(g,w[6],[[x-8,y+61,108,1],[x-4,y+67,105,1]]);
+  shape(g,'#9b674e',[[x,y+16],[x+9,y+7],[x+18,y+10],[x+9,y+23],[x+9,y+59],[x+5,y+60],[x+5,y+19]]);
+  pixels(g,'#c29165',[[x+91,y+20,2,39],[x+12,y+36,73,1],[x+50,y+16,1,40]]);
 }
 function wall(g) {
   rect(g, '#563d42',16,8,416,111);
@@ -353,7 +521,10 @@ function wall(g) {
     }
   }
   beam(g,16,9,416,11);
+  pixels(g,'#83524a',[[17,100,414,4],[25,22,391,1]]);
   beam(g,16,105,416,13);
+  pixels(g,w[1],[[23,116,401,3],[28,122,391,2]]);
+  pixels(g,w[4],[[23,113,401,1],[29,119,390,1]]);
   beam(g,16,15,12,109);
   beam(g,119,16,12,92);
   beam(g,291,16,12,94);
@@ -387,7 +558,13 @@ function rug(g) {
     shape(g,gold[2],[[x,245],[x+5,253],[x,261],[x-5,253]]);
     rect(g,red[1],x-1,251,3,4);
   }
-  for (let x=111;x<267;x+=5) rect(g,gold[x%3],x,288,2,4+x%3);
+  for (let x=112;x<265;x+=4) {
+    rect(g,gold[x%3],x,287,2,4+x%3);
+    rect(g,red[1],x+1,290,1,2);
+  }
+  for (let x=133;x<238;x+=4) rect(g,gold[0],x,226,2,1);
+  for (let x=117;x<257;x+=4) rect(g,gold[0],x,281,2,1);
+  for (let x=127;x<251;x+=9) rect(g,red[3],x,275,4,1);
 }
 function shadow(g, x, y, width, h) {
   g.save();
@@ -437,7 +614,11 @@ function bed(g) {
   beam(g,387,98,9,61);
   shape(g,ink,[[319,142],[319,105],[325,99],[338,93],[369,93],[386,101],[389,105],[389,144]]);
   shape(g,w[3],[[320,141],[320,107],[327,101],[340,96],[367,96],[385,103],[386,141]]);
-  pixels(g,w[4],[[324,109,3,26],[330,104,2,27],[338,100,2,27],[380,108,3,27],[371,102,2,29]]);
+  shape(g,w[4],[[322,119],[322,107],[332,101],[341,97],[368,97],[385,104],[385,111],[370,103],[341,102],[330,106],[325,111]]);
+  shape(g,'#583942',[[328,140],[328,112],[341,105],[367,105],[381,112],[381,140]]);
+  pixels(g,w[4],[[330,112,2,24],[337,109,1,20],[369,109,2,16],[379,113,2,21]]);
+  pixels(g,w[5],[[340,98,28,1],[313,101,2,36],[388,102,2,30]]);
+  for (let x=322;x<387;x+=4) rect(g,w[4],x,132+Math.floor(noise(x,4)*4),2,1);
   shape(g, gold[1], [[340,115],[347,114],[352,109],[356,111],[363,105],[369,104],[365,109],[356,114],[361,118],[352,116],[346,120]]);
   shape(g,w[2],[[318,139],[393,137],[401,197],[390,225],[305,222],[305,188]]);
   shape(g,'#b6a18b',[[319,128],[383,125],[395,159],[395,199],[387,207],[306,202],[304,182]]);
@@ -452,7 +633,16 @@ function bed(g) {
   shape(g,gold[2],[[302,200],[392,206],[398,200],[397,203],[392,209],[302,203]]);
   for (let x=306;x<390;x+=4) rect(g,gold[0],x,206+Math.floor((x-305)/19),1,3+Math.floor(noise(x,3)*3));
   pixels(g,'#eccaa1',[[341,170,20,8],[344,168,14,2],[358,167,7,5],[345,177,2,4],[356,177,2,4],[337,172,5,3]]);
+  pixels(g,'#f6daa7',[[343,171,5,2],[349,169,6,3],[354,173,4,2],[346,176,7,1]]);
+  pixels(g,'#bf977f',[[342,176,14,2],[358,171,5,2],[345,179,2,1],[356,179,2,1]]);
   rect(g,ink,362,169,1,1);
+  for (let i=0;i<74;i++) {
+    const x=320+Math.floor(noise(i,7)*67);
+    const y=162+Math.floor(noise(i,8)*25);
+    if ((x<335||x>367||y>181) && noise(i,11)>.19) rect(g,i%4?red[3]:red[1],x,y,2+i%2,1);
+  }
+  pixels(g,'#f6dfb7',[[330,133,18,2],[327,136,12,1],[355,131,10,1]]);
+  pixels(g,'#c3ab8b',[[330,144,39,1],[325,141,4,2]]);
   beam(g,306,212,8,14);
   beam(g,386,215,8,13);
 }
@@ -493,6 +683,16 @@ function plant(g, time) {
   rect(g,w[5],140,164,20,1);
 }
 
+function bedsideMat(g) {
+  shape(g,'#593e40',[[324,238],[362,236],[384,242],[382,257],[364,262],[326,260],[317,253]]);
+  shape(g,'#596852',[[324,239],[361,237],[382,243],[380,255],[364,260],[326,258],[319,252]]);
+  shape(g,'#889374',[[325,240],[361,238],[380,244],[377,251],[364,255],[327,254],[321,249]]);
+  shape(g,'#778467',[[328,242],[360,240],[377,244],[373,251],[362,253],[329,252],[324,248]]);
+  for (let x=327;x<368;x+=4) {
+    rect(g,'#a8a381',x,254,2,1);
+    rect(g,'#6e7b60',x+1,243+(x%3),1,2);
+  }
+}
 function chest(g) {
   shadow(g,59,256,61,15);
   shape(g,w[2],[[64,229],[110,225],[116,236],[115,258],[108,265],[60,264],[59,239]]);
@@ -518,20 +718,21 @@ function bakeRoom(canvas) {
   pixels(g,w[1],[[16,118,8,191],[424,118,8,191],[16,305,416,4]]);
   pixels(g,w[5],[[23,119,1,184],[423,119,1,184],[19,304,409,1]]);
   rug(g);
+  bedsideMat(g);
   return canvas;
 }
 function drawLights(g, time) {
-  light(g,212,105,119,101,.26,'#ffd490');
-  light(g,223,182,99,74,.14,'#f8ba79');
-  light(g,280,121,67,57,.29+Math.sin(time*4)*.018,'#ffad5f');
+  light(g,206,80,97,83,.19,'#ffd68d');
+  light(g,232,165,106,87,.17,'#ffc477');
+  light(g,282,123,68,58,.24+Math.sin(time*4)*.013,'#ffae65');
 }
 
 
 const fleece = ['#8e7472','#b89b8a','#d8bda3','#f4ddbb','#fff0cf'];
 const skin = '#bb8b80';
 const hoof = '#4c3740';
-const poses = ['idle','blink','stepA','stepB','stepC','stepD','settle','sit','lookA','lookB'];
-const size = 40;
+const poses = ['idle','blink','stepA','stepB','stepC','stepD','settle','sit','lookA','lookB','breathe','yawn','yawnDeep','lie','sleep','sleepB','wake','pet','snuggle','ruffled','perk','stir','sitBlink'];
+const size = 42;
 
 function leg(g, x, y, kick, shade) {
   pixels(g, ink, [[x,y,5,7],[x+kick,y+5,5,4]]);
@@ -558,42 +759,57 @@ function drawPose(g, facing, pose) {
   const back = facing === 'north';
   const gait = poses.indexOf(pose) - 2;
   const moving = gait >= 0 && gait < 4;
-  const seated = pose === 'sit';
+  const resting = ['lie','sleep','sleepB','stir'].includes(pose);
+  const seated = ['sit','wake','pet','snuggle','ruffled','sitBlink'].includes(pose) || resting;
+  const shut = ['blink','sleep','sleepB','pet','snuggle','yawnDeep','sitBlink'].includes(pose);
   const lift = moving ? [0,1,0,-1][gait] : 0;
   const legs = moving ? [[0,-2],[-2,1],[1,0],[2,-1]][gait] : [0,0];
-  const y = (seated ? 16 : 12) + lift;
-  const tilt = pose === 'lookB' ? 2 : 0;
+  const breathe = ['breathe','sleepB','perk'].includes(pose) ? -1 : 0;
+  const y = (resting ? 21 : seated ? 16 : 12) + lift + breathe;
+  const tilt = ['lookB','snuggle','perk'].includes(pose) ? 2 : 0;
   const faceX = side ? 22 : 12 + tilt;
-  const faceY = y - (back ? 7 : 5) + (pose === 'settle' ? 1 : 0);
+  const faceY = y - (back ? 7 : 5) +
+    (resting ? 3 : pose === 'snuggle' ? 2 : pose === 'yawnDeep' ? -2 : 0);
+  const earLift = ['ruffled','perk','stir'].includes(pose) ? -2 : 0;
 
-  if (side) {
+  if (side && !resting) {
     leg(g, 10, 24 + legs[1], 0, fleece[0]);
     leg(g, 24, 24 + legs[0], 0, fleece[0]);
     pixels(g, ink, [[3,y+7,7,7]]);
     pixels(g, fleece[2], [[4,y+8,5,4],[6,y+7,3,4]]);
   }
-  leg(g, side ? 14 : 11, seated ? 26 : 26 + legs[0], moving ? legs[0] : 0, fleece[1]);
-  leg(g, side ? 26 : 24, seated ? 25 : 26 + legs[1], moving ? legs[1] : 0, fleece[1]);
-  wool(g, side ? 7 : 9, y+2, side ? 25 : 23, seated ? 16 : 17);
+  if (!resting) {
+    leg(g, side ? 14 : 11, seated ? 26 : 26 + legs[0], moving ? legs[0] : 0, fleece[1]);
+    leg(g, side ? 26 : 24, seated ? 25 : 26 + legs[1], moving ? legs[1] : 0, fleece[1]);
+  }
+  wool(g, side ? 5 : 9, y+1, side ? 25 : 23, resting ? 14 : 17);
+  pixels(g,fleece[2],[[side ? 12 : 14,y+6,7,3],[side ? 17 : 19,y+10,5,2]]);
+  pixels(g,fleece[3],[[side ? 10 : 12,y+5,4,2],[side ? 16 : 18,y+8,5,2]]);
+  if (resting) pixels(g,hoof,[[11,34,5,2],[20,34,4,2]]);
 
   if (back) {
-    ear(g, 6+tilt, faceY+4, false);
-    ear(g, 24+tilt, faceY+4, true);
+    ear(g, 6+tilt, faceY+4+earLift, false);
+    ear(g, 24+tilt, faceY+4+earLift, true);
     wool(g, faceX, faceY, 16, 12);
     pixels(g, fleece[0], [[17,y+14,6,5]]);
     pixels(g, fleece[3], [[17,y+13,5,4],[19,y+12,3,3]]);
     return;
   }
-  ear(g, faceX - 5, faceY+4, false);
-  if (!side) ear(g, faceX+14, faceY+4, true);
+  ear(g, faceX - 5, faceY+4+earLift, false);
+  if (!side) ear(g, faceX+14, faceY+4+earLift, true);
   shape(g, ink, [[faceX+3,faceY],[faceX+14,faceY],[faceX+17,faceY+4],[faceX+16,faceY+13],[faceX+12,faceY+16],[faceX+4,faceY+15],[faceX,faceY+11],[faceX,faceY+4]]);
   pixels(g, fleece[1], [[faceX+1,faceY+5,14,6],[faceX+3,faceY+10,11,4]]);
   pixels(g, fleece[2], [[faceX+2,faceY+5,12,6],[faceX+5,faceY+11,9,2]]);
   pixels(g, fleece[3], [[faceX+2,faceY+2,12,4],[faceX+4,faceY+1,8,3],[faceX+6,faceY+4,4,3]]);
-  pixels(g, ink, [[faceX+11,faceY+7,2,pose === 'blink' ? 1 : 3]]);
-  if (!side) pixels(g, ink, [[faceX+4,faceY+7,2,pose === 'blink' ? 1 : 3]]);
-  pixels(g, skin, [[faceX+(side?13:8),faceY+11,2,1]]);
-  if (side) ear(g, faceX-4, faceY+5, false);
+  const nearEye = pose === 'ruffled' ? 1 : shut ? 1 : 3;
+  pixels(g,ink,[[faceX+11,faceY+7,shut?3:2,nearEye]]);
+  if (!side) pixels(g,ink,[[faceX+4,faceY+7,shut?3:2,nearEye]]);
+  if (!shut && pose !== 'ruffled') pixels(g,fleece[4],[[faceX+11,faceY+7,1,1]]);
+  pixels(g,skin,[[faceX+(side?13:8),faceY+11,2,1]]);
+  if (pose === 'yawn' || pose === 'yawnDeep') {
+    pixels(g,ink,[[faceX+11,faceY+11,4,pose==='yawnDeep'?3:2]]);
+  }
+  if (side) ear(g, faceX-4, faceY+5+earLift, false);
 }
 
 function createSheet(canvas) {
@@ -625,104 +841,152 @@ function drawLamb(g, sheet, lamb) {
   if (lamb.pose === 'idle' && lamb.elapsed % 4.3 > 4.13) column = 1;
   if (lamb.pose === 'settle') column = 6;
   if (lamb.pose === 'sit') column = 7;
-  if (lamb.pose === 'look') column = lamb.elapsed % 3 > 1.45 ? 9 : 8;
+  if (lamb.pose === 'look') column = lamb.elapsed % 3.7 > 2.2 ? 9 : 8;
+  if (lamb.pose === 'idle' && column === 0 && lamb.elapsed % 2.4 > 1.2) column = 10;
+  if (lamb.pose === 'sit' && lamb.elapsed % 4.4 > 4) column = 22;
+  if (lamb.pose === 'yawn') column = lamb.elapsed > .25 && lamb.elapsed < 1.16 ? 12 : 11;
+  if (lamb.pose === 'lie') column = lamb.elapsed < .22 ? 7 : 13;
+  if (lamb.pose === 'sleep') column = lamb.elapsed % 3.4 < 1.6 ? 14 : 15;
+  if (lamb.pose === 'wake') column = lamb.elapsed < .23 ? 21 : lamb.elapsed < .48 ? 16 : 7;
+  if (lamb.pose === 'pet') column = lamb.elapsed < .24 ? 17 : 18;
+  if (lamb.pose === 'ruffled') column = 19;
+  if (lamb.pose === 'perk') column = 20;
+  if (lamb.pose === 'stir') column = lamb.elapsed < .58 ? 21 : 14;
   g.save();
   g.translate(Math.round(lamb.x), Math.round(lamb.y));
   if (lamb.face === 'west') g.scale(-1, 1);
-  g.drawImage(sheet, column*size, row*size, size, size, -20, -34, size, size);
+  g.drawImage(sheet, column*size, row*size, size, size, -21, -35, size, size);
   g.restore();
 }
 
 
 const canvas = document.querySelector('#room');
 const hint = document.querySelector('#hint');
+const bubble = document.querySelector('#bubble');
+const inviteButton = document.querySelector('#invite');
+const petButton = document.querySelector('#pet');
 const g = canvas.getContext('2d', { alpha: false });
 const offscreen = () => document.createElement('canvas');
 const room = bakeRoom(offscreen());
 const sheet = createSheet(offscreen());
 const lamb = createLamb();
-const camera = { x: 0, y: 0 };
-const keys = new Set();
+const behavior = createBehavior(lamb);
+const camera = { x:0, y:0 };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const controls = {
-  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-  w: 'up', s: 'down', a: 'left', d: 'right'
-};
-const messages = {
-  window: 'A ovelha observa a luz nas colinas.',
-  bed: 'A ovelha se acomoda perto da cama.'
-};
-const defaultHint = 'Toque no chão para andar.';
+const debug = new URLSearchParams(location.search).get('debug') === '1';
+let frameScale, layout, stroke;
+let time = 0, bubbleUntil = 0, previous, invitationId = null;
 
 function resize() {
-  const { width, height } = canvas.parentElement.getBoundingClientRect();
-  const scale = Math.max(1, Math.round(Math.min(height / 172, width / 143)), Math.ceil(width / 330));
-  canvas.width = Math.max(1, Math.min(world.width, Math.floor(width / scale)));
-  canvas.height = Math.max(1, Math.min(world.height, Math.floor(height / scale)));
-  canvas.style.width = canvas.width * scale + 'px';
-  canvas.style.height = canvas.height * scale + 'px';
+  layout = canvas.parentElement.getBoundingClientRect();
+  const { width,height } = layout;
+  frameScale = Math.max(1, Math.floor(width / world.width),
+    Math.round(Math.min(height / (width >= height ? 244 : 172), width / 143)));
+  canvas.width = Math.max(1, Math.min(world.width, Math.floor(width / frameScale)));
+  canvas.height = Math.max(1, Math.min(world.height, Math.floor(height / frameScale)));
+  canvas.style.width = canvas.width * frameScale+'px';
+  canvas.style.height = canvas.height * frameScale+'px';
   g.imageSmoothingEnabled = false;
-  follow(camera, lamb, canvas, Infinity);
-}
-function choose(id) {
-  if (go(lamb, targets[id], id)) {
-    hint.textContent = id === 'window' ? 'A caminho da janela…' : 'A caminho da cama…';
-  }
+  follow(camera,lamb,canvas,Infinity);
 }
 
-canvas.addEventListener('pointerdown', event => {
-  if (!event.isPrimary || event.button !== 0) return;
+function toWorld(event) {
   const rect = canvas.getBoundingClientRect();
-  const x = Math.round(camera.x) + (event.clientX - rect.left) * canvas.width / rect.width;
-  const y = Math.round(camera.y) + (event.clientY - rect.top) * canvas.height / rect.height;
-  if (x >= 158 && x <= 265 && y >= 30 && y <= 138) choose('window');
-  else if (x >= 300 && x <= 404 && y >= 93 && y <= 226) choose('bed');
-  else if (go(lamb, { x, y })) hint.textContent = defaultHint;
-});
-document.querySelectorAll('[data-target]').forEach(button => {
-  button.addEventListener('click', () => choose(button.dataset.target));
-});
-addEventListener('keydown', event => {
-  const key = event.key.toLowerCase();
-  if (!controls[event.key] && !controls[key] || event.altKey || event.ctrlKey || event.metaKey) return;
-  event.preventDefault();
-  if (!keys.size) hint.textContent = defaultHint;
-  keys.add(event.key.startsWith('Arrow') ? event.key : key);
-});
-addEventListener('keyup', event => {
-  keys.delete(event.key.startsWith('Arrow') ? event.key : event.key.toLowerCase());
-});
-addEventListener('blur', () => keys.clear());
-addEventListener('resize', resize);
-
-function input() {
-  const active = new Set([...keys].map(key => controls[key]));
   return {
-    x: Number(active.has('right')) - Number(active.has('left')),
-    y: Number(active.has('down')) - Number(active.has('up'))
+    x: Math.round(camera.x)+(event.clientX-rect.left)*canvas.width/rect.width,
+    y: Math.round(camera.y)+(event.clientY-rect.top)*canvas.height/rect.height
   };
 }
-function draw(time) {
+function touchesLamb(point) {
+  const padding = Math.max(15,22/frameScale);
+  const low = ['sleep','lie','stir'].includes(lamb.pose);
+  return Math.abs(point.x-lamb.x) <= padding && point.y >= lamb.y-(low?21:34) && point.y <= lamb.y+6;
+}
+function giveAffection(stroking = false) {
+  if (debug) return;
+  hint.hidden = true;
+  const line = behavior.pet(stroking);
+  if (line) {
+    bubble.textContent = line;
+    bubble.toggleAttribute('data-visible', true);
+    bubbleUntil = time+2.2;
+  }
+}
+canvas.addEventListener('pointerdown', event => {
+  if (!event.isPrimary || event.button !== 0) return;
+  const point = toWorld(event);
+  if (debug) {
+    go(lamb,point);
+  } else if (touchesLamb(point)) {
+    stroke = { id:event.pointerId, x:event.clientX, y:event.clientY, time };
+    canvas.setPointerCapture(event.pointerId);
+    giveAffection();
+  }
+});
+canvas.addEventListener('pointermove', event => {
+  if (stroke?.id !== event.pointerId || time-stroke.time < .28 ||
+    Math.hypot(event.clientX-stroke.x,event.clientY-stroke.y) < 8 ||
+    !touchesLamb(toWorld(event))) return;
+  stroke = { id:event.pointerId, x:event.clientX, y:event.clientY, time };
+  giveAffection(true);
+});
+for (const name of ['pointerup','pointercancel','lostpointercapture']) {
+  canvas.addEventListener(name,event => { if (stroke?.id === event.pointerId) stroke = null; });
+}
+petButton.addEventListener('click', () => giveAffection());
+inviteButton.addEventListener('click', () => {
+  if (behavior.invite(invitationId)) {
+    hint.hidden = true;
+    inviteButton.hidden = true;
+  }
+});
+addEventListener('resize',resize);
+
+function positionInterface() {
+  const left = (layout.width-canvas.width*frameScale)/2;
+  const top = (layout.height-canvas.height*frameScale)/2;
+  const x = left+(Math.round(lamb.x)-Math.round(camera.x))*frameScale;
+  const y = top+(Math.round(lamb.y)-Math.round(camera.y))*frameScale;
+  petButton.style.left = x+'px';
+  petButton.style.top = y-14*frameScale+'px';
+  if (bubbleUntil) {
+    bubble.style.left = Math.max(60,Math.min(layout.width-60,x))+'px';
+    bubble.style.top = Math.max(66,y-36*frameScale)+'px';
+    if (time >= bubbleUntil) {
+      bubble.toggleAttribute('data-visible',false);
+      bubbleUntil = 0;
+    }
+  }
+  if (time > 11) hint.hidden = true;
+  const suggestion = hint.hidden && !debug ? behavior.suggestion() : null;
+  if (suggestion?.id !== invitationId || suggestion === null && !inviteButton.hidden) {
+    invitationId = suggestion?.id ?? null;
+    inviteButton.hidden = !suggestion;
+    if (suggestion) inviteButton.textContent = suggestion.label;
+  }
+}
+function draw(visibleTime) {
   g.save();
-  g.translate(-Math.round(camera.x), -Math.round(camera.y));
+  g.translate(-Math.round(camera.x),-Math.round(camera.y));
   g.drawImage(room,0,0);
   for (const id of orderAt(lamb.y)) {
     if (id === 'lamb') {
       lambShadow(g,lamb);
       drawLamb(g,sheet,lamb);
-    } else drawScenery(g,id,time);
+    } else drawScenery(g,id,visibleTime);
   }
-  drawLights(g,time);
+  drawLights(g,visibleTime);
   g.restore();
 }
-let previous;
 function frame(now) {
-  const dt = Math.min(.035, (now - (previous ?? now)) / 1000);
+  const dt = Math.min(.035,(now-(previous??now))/1000);
   previous = now;
-  const arrival = step(lamb, dt, input());
-  if (arrival) hint.textContent = messages[arrival];
-  follow(camera, lamb, canvas, dt);
-  draw(reducedMotion.matches ? 0 : now / 1000);
+  time += dt;
+  if (debug) step(lamb,dt);
+  else behavior.update(dt);
+  follow(camera,lamb,canvas,dt);
+  draw(reducedMotion.matches ? 0 : time);
+  positionInterface();
   requestAnimationFrame(frame);
 }
 resize();

@@ -8,29 +8,36 @@ const noise = (a,b) => {
 };
 
 function planks(g, x, y, width, height) {
-  rect(g, w[1], x,y,width,height);
-  const pitch = 17;
-  for (let row = 0; row < Math.ceil(height / pitch); row++) {
-    const top = y + row * pitch;
-    const h = Math.min(pitch,height - row*pitch);
-    const offset = row * 29 % 71;
-    for (let col = -1; col <= width / 71; col++) {
-      const left = Math.max(x, x + col * 71 + offset);
-      const right = Math.min(x + width, x + (col+1)*71 + offset);
-      const span = right-left;
-      if (span <= 3) continue;
-      const tone = 3 + Math.floor(noise(col,row)*3);
-      rect(g, w[tone], left,top,span-1,h-1);
-      rect(g, w[tone+1], left+1,top,span-2,1);
-      rect(g, w[tone-1], left+1,top+h-3,span-2,2);
-      for (let grain = 0; grain < 6; grain++) {
-        const gx = Math.floor(noise(col*8+grain,row)*Math.max(1,span-10));
-        const gy = Math.floor(noise(row,col*9+grain)*Math.max(1,h-5));
-        const length = Math.min(span-gx-2, 4+Math.floor(noise(grain,col+row)*22));
-        if (length > 0) rect(g,w[tone+(grain%3 === 0 ? 1 : -1)],left+gx,top+gy+2,length,1);
+  rect(g,'#493039',x,y,width,height);
+  const colors = ['#765047','#81564b','#8a5d4d','#92624e','#9d6b52'];
+  let top = y;
+  for (let row = 0; top < y+height; row++) {
+    const h = Math.min(12+Math.floor(row*.95),y+height-top);
+    const offset = row*47 % 91;
+    for (let col = -1; col <= width/91; col++) {
+      const left = x+col*91+offset;
+      const clip = value => Math.max(x,Math.min(x+width,value));
+      const r = left+91;
+      const a = clip(left+5), b = clip(r+4), c = clip(r-2), d = clip(left-1);
+      if (b-a < 2 && c-d < 2) continue;
+      const tone = Math.floor(noise(col,row)*colors.length);
+      shape(g,colors[tone],[[a,top],[b,top],[c,top+h-1],[d,top+h-1]]);
+      if (b-a > 3) rect(g,'#ad7958',a+1,top,b-a-3,1);
+      if (c-d > 3) rect(g,'#64413e',d+1,top+h-2,c-d-3,1);
+      const innerX = Math.max(a,d)+3;
+      const innerW = Math.max(0,Math.min(b,c)-innerX-4);
+      for (let grain = 0; grain < 8; grain++) {
+        const gx = Math.floor(noise(col*8+grain,row)*innerW);
+        const gy = Math.floor(noise(row,col*11+grain)*Math.max(1,h-5));
+        const length = Math.min(innerW-gx, 3+Math.floor(noise(grain,col+row)*26));
+        if (length > 0) rect(g,grain%3 ? '#7b5146' : '#ac7658',innerX+gx,top+gy+2,length,1);
       }
-      if (span > 24) pixels(g,w[tone-2],[[left+3,top+4,1,1],[right-5,top+h-5,1,1]]);
+      if (innerW > 27) {
+        rect(g,'#604143',innerX+2,top+h-5,2,1);
+        rect(g,'#b17c5c',innerX+3,top+h-4,2,1);
+      }
     }
+    top+=h;
   }
 }
 
@@ -58,8 +65,12 @@ function window(g) {
   pixels(g,'#89a575',[[x+14,y+51,10,2],[x+27,y+47,8,1],[x+66,y+52,12,1],[x+80,y+49,5,2]]);
   pixels(g,w[2],[[x+46,y+7,5,54],[x+7,y+35,84,4]]);
   pixels(g,w[6],[[x+46,y+8,1,51],[x+8,y+35,82,1]]);
-  beam(g,x-6,y+60,110,10);
-  rect(g,w[6],x-4,y+61,105,1);
+  shape(g,'#382a36',[[x+3,y+61],[x+101,y+61],[x+107,y+78],[x+8,y+78]]);
+  shape(g,w[3],[[x-11,y+60],[x+101,y+60],[x+104,y+64],[x-6,y+68]]);
+  beam(g,x-6,y+66,110,8);
+  pixels(g,w[6],[[x-8,y+61,108,1],[x-4,y+67,105,1]]);
+  shape(g,'#9b674e',[[x,y+16],[x+9,y+7],[x+18,y+10],[x+9,y+23],[x+9,y+59],[x+5,y+60],[x+5,y+19]]);
+  pixels(g,'#c29165',[[x+91,y+20,2,39],[x+12,y+36,73,1],[x+50,y+16,1,40]]);
 }
 function wall(g) {
   rect(g, '#563d42',16,8,416,111);
@@ -74,7 +85,10 @@ function wall(g) {
     }
   }
   beam(g,16,9,416,11);
+  pixels(g,'#83524a',[[17,100,414,4],[25,22,391,1]]);
   beam(g,16,105,416,13);
+  pixels(g,w[1],[[23,116,401,3],[28,122,391,2]]);
+  pixels(g,w[4],[[23,113,401,1],[29,119,390,1]]);
   beam(g,16,15,12,109);
   beam(g,119,16,12,92);
   beam(g,291,16,12,94);
@@ -108,7 +122,13 @@ function rug(g) {
     shape(g,gold[2],[[x,245],[x+5,253],[x,261],[x-5,253]]);
     rect(g,red[1],x-1,251,3,4);
   }
-  for (let x=111;x<267;x+=5) rect(g,gold[x%3],x,288,2,4+x%3);
+  for (let x=112;x<265;x+=4) {
+    rect(g,gold[x%3],x,287,2,4+x%3);
+    rect(g,red[1],x+1,290,1,2);
+  }
+  for (let x=133;x<238;x+=4) rect(g,gold[0],x,226,2,1);
+  for (let x=117;x<257;x+=4) rect(g,gold[0],x,281,2,1);
+  for (let x=127;x<251;x+=9) rect(g,red[3],x,275,4,1);
 }
 function shadow(g, x, y, width, h) {
   g.save();
@@ -158,7 +178,11 @@ function bed(g) {
   beam(g,387,98,9,61);
   shape(g,ink,[[319,142],[319,105],[325,99],[338,93],[369,93],[386,101],[389,105],[389,144]]);
   shape(g,w[3],[[320,141],[320,107],[327,101],[340,96],[367,96],[385,103],[386,141]]);
-  pixels(g,w[4],[[324,109,3,26],[330,104,2,27],[338,100,2,27],[380,108,3,27],[371,102,2,29]]);
+  shape(g,w[4],[[322,119],[322,107],[332,101],[341,97],[368,97],[385,104],[385,111],[370,103],[341,102],[330,106],[325,111]]);
+  shape(g,'#583942',[[328,140],[328,112],[341,105],[367,105],[381,112],[381,140]]);
+  pixels(g,w[4],[[330,112,2,24],[337,109,1,20],[369,109,2,16],[379,113,2,21]]);
+  pixels(g,w[5],[[340,98,28,1],[313,101,2,36],[388,102,2,30]]);
+  for (let x=322;x<387;x+=4) rect(g,w[4],x,132+Math.floor(noise(x,4)*4),2,1);
   shape(g, gold[1], [[340,115],[347,114],[352,109],[356,111],[363,105],[369,104],[365,109],[356,114],[361,118],[352,116],[346,120]]);
   shape(g,w[2],[[318,139],[393,137],[401,197],[390,225],[305,222],[305,188]]);
   shape(g,'#b6a18b',[[319,128],[383,125],[395,159],[395,199],[387,207],[306,202],[304,182]]);
@@ -173,7 +197,16 @@ function bed(g) {
   shape(g,gold[2],[[302,200],[392,206],[398,200],[397,203],[392,209],[302,203]]);
   for (let x=306;x<390;x+=4) rect(g,gold[0],x,206+Math.floor((x-305)/19),1,3+Math.floor(noise(x,3)*3));
   pixels(g,'#eccaa1',[[341,170,20,8],[344,168,14,2],[358,167,7,5],[345,177,2,4],[356,177,2,4],[337,172,5,3]]);
+  pixels(g,'#f6daa7',[[343,171,5,2],[349,169,6,3],[354,173,4,2],[346,176,7,1]]);
+  pixels(g,'#bf977f',[[342,176,14,2],[358,171,5,2],[345,179,2,1],[356,179,2,1]]);
   rect(g,ink,362,169,1,1);
+  for (let i=0;i<74;i++) {
+    const x=320+Math.floor(noise(i,7)*67);
+    const y=162+Math.floor(noise(i,8)*25);
+    if ((x<335||x>367||y>181) && noise(i,11)>.19) rect(g,i%4?red[3]:red[1],x,y,2+i%2,1);
+  }
+  pixels(g,'#f6dfb7',[[330,133,18,2],[327,136,12,1],[355,131,10,1]]);
+  pixels(g,'#c3ab8b',[[330,144,39,1],[325,141,4,2]]);
   beam(g,306,212,8,14);
   beam(g,386,215,8,13);
 }
@@ -214,6 +247,16 @@ function plant(g, time) {
   rect(g,w[5],140,164,20,1);
 }
 
+function bedsideMat(g) {
+  shape(g,'#593e40',[[324,238],[362,236],[384,242],[382,257],[364,262],[326,260],[317,253]]);
+  shape(g,'#596852',[[324,239],[361,237],[382,243],[380,255],[364,260],[326,258],[319,252]]);
+  shape(g,'#889374',[[325,240],[361,238],[380,244],[377,251],[364,255],[327,254],[321,249]]);
+  shape(g,'#778467',[[328,242],[360,240],[377,244],[373,251],[362,253],[329,252],[324,248]]);
+  for (let x=327;x<368;x+=4) {
+    rect(g,'#a8a381',x,254,2,1);
+    rect(g,'#6e7b60',x+1,243+(x%3),1,2);
+  }
+}
 function chest(g) {
   shadow(g,59,256,61,15);
   shape(g,w[2],[[64,229],[110,225],[116,236],[115,258],[108,265],[60,264],[59,239]]);
@@ -239,10 +282,11 @@ export function bakeRoom(canvas) {
   pixels(g,w[1],[[16,118,8,191],[424,118,8,191],[16,305,416,4]]);
   pixels(g,w[5],[[23,119,1,184],[423,119,1,184],[19,304,409,1]]);
   rug(g);
+  bedsideMat(g);
   return canvas;
 }
 export function drawLights(g, time) {
-  light(g,212,105,119,101,.26,'#ffd490');
-  light(g,223,182,99,74,.14,'#f8ba79');
-  light(g,280,121,67,57,.29+Math.sin(time*4)*.018,'#ffad5f');
+  light(g,206,80,97,83,.19,'#ffd68d');
+  light(g,232,165,106,87,.17,'#ffc477');
+  light(g,282,123,68,58,.24+Math.sin(time*4)*.013,'#ffae65');
 }
