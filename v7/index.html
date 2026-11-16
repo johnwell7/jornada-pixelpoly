@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Jornada · O refúgio</title>
+<link rel="stylesheet" href="room.css">
+<main>
+  <canvas id="room" aria-label="Quarto da ovelha em pixel art. Use as setas para andar."></canvas>
+  <header><h1>Jornada</h1></header>
+  <section aria-label="Destinos">
+    <p id="hint" aria-live="polite">Toque no chão para andar.</p>
+    <nav aria-label="Ir até">
+      <button data-target="window">Janela</button>
+      <button data-target="bed">Cama</button>
+    </nav>
+  </section>
+</main>
+<script type="module" src="game.mjs"></script>
+</html>

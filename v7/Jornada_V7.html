@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Jornada · O refúgio</title>
+<style>
+:root {
+  color-scheme: dark;
+  font-family: Georgia, serif;
+  color: #f5dfbd;
+  background: #211a23;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { position: relative; height: 100vh; height: 100dvh; overflow: hidden; background: #2b202a; }
+canvas { display: block; position: absolute; inset: 0; margin: auto; image-rendering: pixelated; touch-action: none; }
+header, section { position: absolute; left: 0; right: 0; pointer-events: none; text-align: center; }
+header { top: max(14px, env(safe-area-inset-top)); }
+h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 2.2rem); font-weight: normal; letter-spacing: .12em; text-shadow: 0 2px #201822, 0 4px #201822; }
+section {
+  bottom: 0;
+  padding: 24px 12px max(12px, env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, #211a23e8);
+}
+p { margin: 0 auto 8px; min-height: 1.2em; font-size: .96rem; text-shadow: 0 1px 2px #201822; }
+nav { display: flex; gap: 8px; justify-content: center; }
+button {
+  pointer-events: auto; font: inherit; color: inherit; min-height: 44px;
+  min-width: 76px; padding: 5px 16px; border: 1px solid #a87c57; background: #35262d;
+}
+button:hover, button:focus-visible { border-color: #f5dfbd; background: #503441; }
+</style>
+<main>
+  <canvas id="room" aria-label="Quarto da ovelha em pixel art. Use as setas para andar."></canvas>
+  <header><h1>Jornada</h1></header>
+  <section aria-label="Destinos">
+    <p id="hint" aria-live="polite">Toque no chão para andar.</p>
+    <nav aria-label="Ir até">
+      <button data-target="window">Janela</button>
+      <button data-target="bed">Cama</button>
+    </nav>
+  </section>
+</main>
+<script type="module">
+const world = { width: 448, height: 320 };
+const floor = { x: 16, y: 116, w: 416, h: 192 };
+const start = { x: 196, y: 237 };
+const objects = [
+  { id: 'shelf', x: 75, y: 143, box: { x: 35, y: 119, w: 80, h: 24 } },
+  { id: 'bench', x: 211, y: 138, box: { x: 178, y: 119, w: 66, h: 19 } },
+  { id: 'bed', x: 352, y: 226, box: { x: 305, y: 136, w: 95, h: 90 } },
+  { id: 'lantern', x: 281, y: 155, box: { x: 267, y: 138, w: 28, h: 17 } },
+  { id: 'plant', x: 150, y: 183, box: { x: 139, y: 163, w: 22, h: 20 } },
+  { id: 'chest', x: 88, y: 265, box: { x: 61, y: 240, w: 54, h: 25 } }
+];
+const targets = {
+  window: { x: 211, y: 155, face: 'north', pose: 'look' },
+  bed: { x: 335, y: 248, face: 'east', pose: 'sit' }
+};
+
+const radius = 6;
+function walkable(x, y) {
+  return x >= floor.x + radius && x <= floor.x + floor.w - radius &&
+    y >= floor.y + radius && y <= floor.y + floor.h - radius &&
+    !objects.some(({ box: b }) => x > b.x - radius && x < b.x + b.w + radius &&
+      y > b.y - radius && y < b.y + b.h + radius);
+}
+function crossesBox(a, b, box) {
+  let enter = 0;
+  let exit = 1;
+  for (const [origin, delta, low, high] of [
+    [a.x, b.x-a.x, box.x-radius, box.x+box.w+radius],
+    [a.y, b.y-a.y, box.y-radius, box.y+box.h+radius]
+  ]) {
+    if (delta === 0) {
+      if (origin <= low || origin >= high) return false;
+    } else {
+      const from = (low-origin)/delta, to = (high-origin)/delta;
+      enter = Math.max(enter, Math.min(from,to));
+      exit = Math.min(exit, Math.max(from,to));
+      if (enter >= exit) return false;
+    }
+  }
+  return enter < exit;
+}
+function clearSegment(a,b) {
+  return walkable(a.x,a.y) && walkable(b.x,b.y) &&
+    !objects.some(({ box }) => crossesBox(a,b,box));
+}
+
+const grid = 8;
+const columns = Math.floor(floor.w / grid) + 1;
+const rows = Math.floor(floor.h / grid) + 1;
+const point = id => ({ x: floor.x + id % columns * grid, y: floor.y + Math.floor(id / columns) * grid });
+const nodes = Array.from({ length: columns * rows }, (_, id) => point(id));
+const neighbours = [[1,0],[-1,0],[0,1],[0,-1]];
+const distance = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+function nearestNode(p, connected) {
+  let best = -1;
+  let bestDistance = Infinity;
+  nodes.forEach((node, id) => {
+    const d = distance(p, node);
+    if (d < bestDistance && walkable(node.x, node.y) && (!connected || clearSegment(p, node))) {
+      best = id;
+      bestDistance = d;
+    }
+  });
+  return best;
+}
+
+function findPath(origin, destination) {
+  if (clearSegment(origin, destination)) return [destination];
+  const from = nearestNode(origin, true);
+  const exact = walkable(destination.x, destination.y);
+  const to = nearestNode(destination, exact);
+  if (from < 0 || to < 0) return [];
+  const previous = new Int32Array(nodes.length).fill(-1);
+  const queue = [from];
+  previous[from] = from;
+  for (let cursor = 0; cursor < queue.length && previous[to] < 0; cursor++) {
+    const id = queue[cursor];
+    const col = id % columns;
+    const row = Math.floor(id / columns);
+    for (const [dx,dy] of neighbours) {
+      const x = col + dx, y = row + dy;
+      const next = y * columns + x;
+      if (x < 0 || x >= columns || y < 0 || y >= rows || previous[next] >= 0) continue;
+      if (!clearSegment(nodes[id], nodes[next])) continue;
+      previous[next] = id;
+      queue.push(next);
+    }
+  }
+  if (previous[to] < 0) return [];
+  const route = [];
+  for (let id = to; id !== from; id = previous[id]) route.push(nodes[id]);
+  route.push(nodes[from]);
+  route.reverse();
+  if (exact) route.push(destination);
+
+  const path = [];
+  let at = origin;
+  for (let i = 0; i < route.length;) {
+    let next = i;
+    while (next + 1 < route.length && clearSegment(at, route[next + 1])) next++;
+    at = route[next];
+    path.push(at);
+    i = next + 1;
+  }
+  return path;
+}
+
+function createLamb() {
+  return { ...start, face: 'south', pose: 'idle', elapsed: 0, distance: 0, path: [], target: null };
+}
+function setPose(lamb, pose) {
+  if (lamb.pose !== pose) {
+    lamb.pose = pose;
+    lamb.elapsed = 0;
+    if (pose === 'walk') lamb.distance = 0;
+  }
+}
+function go(lamb, destination, target = null) {
+  lamb.path = findPath(lamb, destination);
+  lamb.target = lamb.path.length ? target : null;
+  return lamb.path.length > 0;
+}
+
+function move(lamb, dx, dy) {
+  if (Math.abs(dx) > Math.abs(dy) * 0.85) lamb.face = dx < 0 ? 'west' : 'east';
+  else if (dy) lamb.face = dy < 0 ? 'north' : 'south';
+  setPose(lamb, 'walk');
+  lamb.distance += Math.hypot(dx, dy);
+  lamb.x += dx;
+  lamb.y += dy;
+}
+
+function step(lamb, dt, input = { x: 0, y: 0 }) {
+  lamb.elapsed += dt;
+  const budget = 70 * dt;
+  if (input.x || input.y) {
+    lamb.path = [];
+    lamb.target = null;
+    const length = Math.hypot(input.x, input.y);
+    const dx = input.x * budget / length, dy = input.y * budget / length;
+    const x = walkable(lamb.x + dx, lamb.y) ? dx : 0;
+    const y = walkable(lamb.x + x, lamb.y + dy) ? dy : 0;
+    if (x || y) move(lamb, x, y);
+    else if (lamb.pose === 'walk') setPose(lamb, 'settle');
+    return null;
+  }
+
+  if (lamb.path.length) {
+    let remaining = budget;
+    while (remaining > 0 && lamb.path.length) {
+      const next = lamb.path[0];
+      const d = distance(lamb, next);
+      if (d > 0.0001) {
+        const amount = Math.min(remaining, d);
+        move(lamb, (next.x - lamb.x) / d * amount, (next.y - lamb.y) / d * amount);
+        remaining -= amount;
+      }
+      if (d <= 0.0001 || distance(lamb, next) <= 0.0001) lamb.path.shift();
+    }
+    if (lamb.path.length) return null;
+    const arrival = lamb.target;
+    lamb.target = null;
+    if (arrival) {
+      lamb.face = targets[arrival].face;
+      setPose(lamb, targets[arrival].pose);
+    } else setPose(lamb, 'settle');
+    return arrival;
+  }
+  if (lamb.pose === 'walk') setPose(lamb, 'settle');
+  if (lamb.pose === 'settle' && lamb.elapsed >= 0.15) setPose(lamb, 'idle');
+  return null;
+}
+
+const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+function follow(camera, lamb, view, dt) {
+  const x = clamp(lamb.x - view.width / 2, 0, world.width - view.width);
+  const y = clamp(lamb.y - view.height * 0.64, 0, world.height - view.height);
+  const amount = dt === Infinity ? 1 : 1 - Math.exp(-7 * dt);
+  camera.x = clamp(camera.x + (x - camera.x) * amount, 0, world.width - view.width);
+  camera.y = clamp(camera.y + (y - camera.y) * amount, 0, world.height - view.height);
+}
+function orderAt(y) {
+  return [...objects, { id: 'lamb', y }].sort((a,b) => a.y - b.y).map(({ id }) => id);
+}
+
+const ink = '#2b2029';
+const wood = ['#34252e','#48303a','#604047','#79504b','#9c664f','#be865d','#d7a46d'];
+const burgundy = ['#492e44','#62374d','#7c3f53','#9a5260','#b46566'];
+const gold = ['#956348','#be8754','#dfa96a','#f2c985'];
+
+function shape(g, color, points) {
+  const min = Math.min(...points.map(p => p[1]));
+  const max = Math.max(...points.map(p => p[1]));
+  g.fillStyle = color;
+  for (let y = min; y < max; y++) {
+    const hits = [];
+    const line = y + 0.5;
+    points.forEach(([x1,y1], index) => {
+      const [x2,y2] = points[(index + 1) % points.length];
+      if ((line >= y1 && line < y2) || (line >= y2 && line < y1)) {
+        hits.push(x1 + (x2 - x1) * (line - y1) / (y2 - y1));
+      }
+    });
+    hits.sort((a,b) => a-b);
+    for (let i = 0; i + 1 < hits.length; i += 2) {
+      const left = Math.round(hits[i]);
+      g.fillRect(left, y, Math.round(hits[i + 1]) - left, 1);
+    }
+  }
+}
+
+function pixels(g, color, stamps) {
+  g.fillStyle = color;
+  for (const [x,y,w,h] of stamps) g.fillRect(x,y,w,h);
+}
+
+function light(g, x, y, rx, ry, strength, tint) {
+  g.save();
+  g.globalCompositeOperation = 'screen';
+  g.fillStyle = tint;
+  const size = 4;
+  for (let row = -ry; row < ry; row += size) {
+    for (let col = -rx; col < rx; col += size) {
+      const fade = 1 - (col / rx) ** 2 - (row / ry) ** 2;
+      if (fade > 0) {
+        g.globalAlpha = strength * Math.ceil(fade * 6) / 6;
+        g.fillRect(x + col, y + row, size, size);
+      }
+    }
+  }
+  g.restore();
+}
+
+const red = burgundy;
+const w = wood;
+
+
+const rect = (g, color, x, y, width, height) => pixels(g, color, [[x,y,width,height]]);
+const noise = (a,b) => {
+  const n = Math.imul(a + 117, 1597334677) ^ Math.imul(b + 63, 3812015801);
+  return ((n ^ n >>> 16) >>> 0) / 4294967296;
+};
+
+function planks(g, x, y, width, height) {
+  rect(g, w[1], x,y,width,height);
+  const pitch = 17;
+  for (let row = 0; row < Math.ceil(height / pitch); row++) {
+    const top = y + row * pitch;
+    const h = Math.min(pitch,height - row*pitch);
+    const offset = row * 29 % 71;
+    for (let col = -1; col <= width / 71; col++) {
+      const left = Math.max(x, x + col * 71 + offset);
+      const right = Math.min(x + width, x + (col+1)*71 + offset);
+      const span = right-left;
+      if (span <= 3) continue;
+      const tone = 3 + Math.floor(noise(col,row)*3);
+      rect(g, w[tone], left,top,span-1,h-1);
+      rect(g, w[tone+1], left+1,top,span-2,1);
+      rect(g, w[tone-1], left+1,top+h-3,span-2,2);
+      for (let grain = 0; grain < 6; grain++) {
+        const gx = Math.floor(noise(col*8+grain,row)*Math.max(1,span-10));
+        const gy = Math.floor(noise(row,col*9+grain)*Math.max(1,h-5));
+        const length = Math.min(span-gx-2, 4+Math.floor(noise(grain,col+row)*22));
+        if (length > 0) rect(g,w[tone+(grain%3 === 0 ? 1 : -1)],left+gx,top+gy+2,length,1);
+      }
+      if (span > 24) pixels(g,w[tone-2],[[left+3,top+4,1,1],[right-5,top+h-5,1,1]]);
+    }
+  }
+}
+
+function beam(g, x, y, width, height) {
+  rect(g, ink,x,y,width,height);
+  rect(g,w[3],x+1,y+1,width-3,height-3);
+  if (width > height) {
+    pixels(g,w[4],[[x+1,y+1,width-3,2],[x+5,y+4,Math.floor(width*.6),1]]);
+    rect(g,w[2],x+2,y+height-4,width-4,2);
+  } else {
+    pixels(g,w[4],[[x+2,y+2,2,height-5],[x+5,y+8,1,Math.floor(height*.7)]]);
+    rect(g,w[2],x+width-5,y+2,2,height-5);
+  }
+}
+
+function window(g) {
+  const x = 163, y = 30;
+  shape(g, ink, [[x,y+63],[x,y+16],[x+10,y+6],[x+26,y],[x+71,y],[x+88,y+7],[x+98,y+18],[x+98,y+63]]);
+  shape(g, w[5], [[x+3,y+61],[x+3,y+18],[x+13,y+8],[x+27,y+3],[x+70,y+3],[x+86,y+10],[x+95,y+19],[x+95,y+61]]);
+  shape(g, '#719487', [[x+8,y+58],[x+8,y+19],[x+17,y+11],[x+28,y+8],[x+70,y+8],[x+84,y+13],[x+90,y+21],[x+90,y+58]]);
+  shape(g, '#bcb98c', [[x+8,y+38],[x+21,y+37],[x+33,y+31],[x+55,y+34],[x+68,y+30],[x+90,y+35],[x+90,y+58],[x+8,y+58]]);
+  shape(g, '#f0cf91', [[x+57,y+14],[x+67,y+13],[x+73,y+17],[x+75,y+23],[x+72,y+28],[x+59,y+29],[x+55,y+24],[x+55,y+18]]);
+  shape(g, '#7b9571', [[x+8,y+43],[x+22,y+37],[x+37,y+40],[x+52,y+47],[x+73,y+37],[x+90,y+39],[x+90,y+58],[x+8,y+58]]);
+  shape(g, '#526e61', [[x+8,y+51],[x+24,y+45],[x+44,y+47],[x+57,y+52],[x+76,y+46],[x+90,y+49],[x+90,y+59],[x+8,y+59]]);
+  pixels(g,'#89a575',[[x+14,y+51,10,2],[x+27,y+47,8,1],[x+66,y+52,12,1],[x+80,y+49,5,2]]);
+  pixels(g,w[2],[[x+46,y+7,5,54],[x+7,y+35,84,4]]);
+  pixels(g,w[6],[[x+46,y+8,1,51],[x+8,y+35,82,1]]);
+  beam(g,x-6,y+60,110,10);
+  rect(g,w[6],x-4,y+61,105,1);
+}
+function wall(g) {
+  rect(g, '#563d42',16,8,416,111);
+  for (let col = 0; col < 26; col++) {
+    const x = 16+col*16;
+    const colors = ['#553e45','#61464a','#674a4a','#6c4b4c'];
+    rect(g, colors[Math.floor(noise(col,0)*colors.length)],x,13,15,101);
+    rect(g, w[2],x,11,1,103);
+    for (let n=0;n<5;n++) {
+      const y=21+Math.floor(noise(col,n+12)*81);
+      rect(g,'#73514e',x+2+Math.floor(noise(n,col)*11),y,1,5+Math.floor(noise(col,n)*9));
+    }
+  }
+  beam(g,16,9,416,11);
+  beam(g,16,105,416,13);
+  beam(g,16,15,12,109);
+  beam(g,119,16,12,92);
+  beam(g,291,16,12,94);
+  beam(g,420,16,12,108);
+  window(g);
+  const hanging = [[117,28],[117,37],[117,74]];
+  for (const [x,y] of hanging) rect(g,w[6],x+6,y,2,2);
+  pixels(g,w[3],[[331,43,46,43],[333,41,42,2],[333,86,42,2]]);
+  pixels(g,gold[0],[[335,46,38,36],[337,48,34,32]]);
+  rect(g,'#805c57',339,50,30,28);
+  shape(g,'#a98368',[[339,67],[348,56],[359,66],[368,61],[369,78],[339,78]]);
+  shape(g,'#556956',[[339,74],[349,67],[358,73],[369,68],[369,78],[339,78]]);
+  pixels(g,'#edc984',[[358,55,5,3],[359,54,3,6]]);
+}
+
+function rug(g) {
+  const outline = [[122,218],[244,218],[279,280],[269,291],[103,291],[95,281]];
+  shape(g, '#4b333c', outline.map(([x,y])=>[x+2,y+3]));
+  shape(g, red[0], outline);
+  shape(g, gold[1], [[124,221],[242,221],[274,280],[265,287],[108,287],[100,280]]);
+  shape(g, red[2], [[127,224],[239,224],[270,279],[263,284],[111,284],[104,279]]);
+  shape(g, red[1], [[130,230],[236,230],[261,278],[114,278]]);
+  for (let y = 233; y < 277; y+=3) {
+    for (let x = 125; x < 248; x+=4) {
+      if (noise(x,y) > .74) rect(g, red[2],x+(y%2)*2,y,2,1);
+    }
+  }
+  for (const x of [143,187,231]) {
+    shape(g,gold[0],[[x,233],[x+14,253],[x,274],[x-14,253]]);
+    shape(g,red[2],[[x,237],[x+11,253],[x,270],[x-11,253]]);
+    shape(g,gold[2],[[x,245],[x+5,253],[x,261],[x-5,253]]);
+    rect(g,red[1],x-1,251,3,4);
+  }
+  for (let x=111;x<267;x+=5) rect(g,gold[x%3],x,288,2,4+x%3);
+}
+function shadow(g, x, y, width, h) {
+  g.save();
+  g.globalAlpha = .49;
+  pixels(g,'#30252c',[[x+3,y,width-6,h],[x,y+3,width,h-6]]);
+  g.restore();
+}
+
+function shelf(g) {
+  const x=35, y=52;
+  shadow(g,x-4,132,90,16);
+  shape(g,w[1],[[x+73,y+3],[x+81,y+10],[x+81,y+85],[x+73,y+90]]);
+  rect(g,ink,x,y,75,85);
+  rect(g,w[4],x+3,y+4,69,76);
+  rect(g,w[1],x+8,y+9,59,63);
+  pixels(g,w[6],[[x+3,y+2,67,2],[x+4,y+7,3,69]]);
+  for (let row=0;row<3;row++) {
+    const base=y+30+row*22;
+    const book=['#8f5b59','#657a70','#9b704f','#a58660','#615066'];
+    for(let i=0;i<10;i++) {
+      const h=7+Math.floor(noise(i,row)*10);
+      const bx=x+10+i*5;
+      if (noise(i+10,row) > .20) {
+        rect(g,book[(i+row*3)%book.length],bx,base-h,4,h);
+        pixels(g,gold[1],[[bx+1,base-h+2,2,1],[bx+1,base-3,2,1]]);
+        rect(g,w[1],bx,base-1,4,1);
+      }
+    }
+    beam(g,x+6,base,64,4);
+  }
+  beam(g,x+1,y,75,7);
+  pixels(g,w[2],[[x+4,y+83,8,8],[x+60,y+83,8,8]]);
+}
+
+function bench(g) {
+  shadow(g,177,129,70,13);
+  beam(g,181,116,6,22);
+  beam(g,235,116,6,22);
+  shape(g,w[5],[[178,110],[231,110],[245,117],[189,118]]);
+  beam(g,178,117,67,7);
+  pixels(g,red[1],[[187,111,25,4],[189,109,19,2]]);
+  pixels(g,red[3],[[191,109,16,1],[189,113,21,1]]);
+}
+function bed(g) {
+  shadow(g,306,218,99,15);
+  beam(g,312,97,8,63);
+  beam(g,387,98,9,61);
+  shape(g,ink,[[319,142],[319,105],[325,99],[338,93],[369,93],[386,101],[389,105],[389,144]]);
+  shape(g,w[3],[[320,141],[320,107],[327,101],[340,96],[367,96],[385,103],[386,141]]);
+  pixels(g,w[4],[[324,109,3,26],[330,104,2,27],[338,100,2,27],[380,108,3,27],[371,102,2,29]]);
+  shape(g, gold[1], [[340,115],[347,114],[352,109],[356,111],[363,105],[369,104],[365,109],[356,114],[361,118],[352,116],[346,120]]);
+  shape(g,w[2],[[318,139],[393,137],[401,197],[390,225],[305,222],[305,188]]);
+  shape(g,'#b6a18b',[[319,128],[383,125],[395,159],[395,199],[387,207],[306,202],[304,182]]);
+  shape(g,'#e0c9a6',[[322,128],[383,125],[390,150],[319,153],[308,175],[308,155]]);
+  shape(g,'#f4dfb9',[[329,129],[366,128],[374,134],[375,143],[329,146],[323,141]]);
+  shape(g,'#fff0cf',[[330,130],[365,129],[371,133],[371,137],[328,139],[326,136]]);
+  shape(g,red[0],[[317,153],[394,149],[403,184],[400,206],[393,214],[383,213],[378,215],[306,209],[300,204],[301,183]]);
+  shape(g,red[2],[[318,154],[391,151],[400,184],[393,192],[304,188],[304,182]]);
+  shape(g,red[3],[[317,156],[388,154],[391,159],[318,162],[309,184],[305,186]]);
+  shape(g,red[1],[[305,190],[394,194],[399,188],[397,203],[391,211],[309,207],[302,203]]);
+  shape(g,gold[1],[[302,194],[395,200],[399,195],[398,198],[395,203],[302,197]]);
+  shape(g,gold[2],[[302,200],[392,206],[398,200],[397,203],[392,209],[302,203]]);
+  for (let x=306;x<390;x+=4) rect(g,gold[0],x,206+Math.floor((x-305)/19),1,3+Math.floor(noise(x,3)*3));
+  pixels(g,'#eccaa1',[[341,170,20,8],[344,168,14,2],[358,167,7,5],[345,177,2,4],[356,177,2,4],[337,172,5,3]]);
+  rect(g,ink,362,169,1,1);
+  beam(g,306,212,8,14);
+  beam(g,386,215,8,13);
+}
+
+function lantern(g, time) {
+  shadow(g,265,146,32,12);
+  beam(g,269,132,6,23);
+  beam(g,287,132,6,23);
+  shape(g,w[5],[[272,126],[288,126],[297,133],[264,133]]);
+  beam(g,264,133,33,7);
+  pixels(g,ink,[[274,109,14,20],[276,105,10,4],[279,101,4,5]]);
+  pixels(g,gold[0],[[275,109,12,2],[275,125,12,3],[276,112,1,12],[285,112,1,12]]);
+  rect(g,'#744838',278,111,7,13);
+  const sway = Math.floor(time*8)%4;
+  pixels(g,gold[2],[[279,116,5,7],[280+(sway%3)-1,113+(sway%2),3,5]]);
+  pixels(g,'#fff1b0',[[280,119,3,3],[281,116,1,5]]);
+}
+
+function leaf(g, x, y, dx, dy, n) {
+  const end=[x+dx,y+dy];
+  shape(g,'#39453a',[[x-2,y+1],[x+1,y+3],end,[end[0]+3,end[1]-2],[x+4,y-4]]);
+  shape(g,n%2?'#6f885c':'#577750',[[x,y],[x+2,y+1],end,[end[0]+2,end[1]-1],[x+3,y-3]]);
+  rect(g,'#95a56a',end[0]+1,end[1],3,1);
+}
+function plant(g, time) {
+  const t=Math.round(Math.sin(time*1.5));
+  shadow(g,136,174,29,14);
+  pixels(g,'#667150',[[149,146,2,23],[146,151,2,15],[152,148,2,16]]);
+  leaf(g,149,159,-13+t,-6,1);
+  leaf(g,150,155,10+t,-12,0);
+  leaf(g,151,161,14+t,-5,1);
+  leaf(g,149,153,-8+t,-13,0);
+  leaf(g,151,154,1+t,-16,1);
+  shape(g,w[1],[[138,166],[163,166],[159,183],[143,183]]);
+  shape(g,'#ad6b54',[[141,167],[161,167],[157,181],[145,181]]);
+  pixels(g,w[5],[[141,167,20,3],[144,172,3,6]]);
+  rect(g,w[2],138,164,25,4);
+  rect(g,w[5],140,164,20,1);
+}
+
+function chest(g) {
+  shadow(g,59,256,61,15);
+  shape(g,w[2],[[64,229],[110,225],[116,236],[115,258],[108,265],[60,264],[59,239]]);
+  shape(g,w[5],[[63,230],[108,226],[113,233],[110,240],[61,240]]);
+  pixels(g,w[3],[[62,242,47,19],[63,244,44,2],[66,252,32,1],[69,257,36,1]]);
+  pixels(g,gold[0],[[66,230,3,34],[100,228,3,35],[82,238,9,11]]);
+  pixels(g,gold[2],[[67,231,1,30],[101,230,1,29],[83,239,7,2]]);
+  rect(g,ink,85,242,3,4);
+}
+
+const sprites = { shelf, bench, bed, plant, lantern, chest };
+function drawScenery(g, id, time) {
+  sprites[id](g,time);
+}
+
+function bakeRoom(canvas) {
+  canvas.width = world.width;
+  canvas.height = world.height;
+  const g = canvas.getContext('2d');
+  rect(g,'#2b202a',0,0,world.width,world.height);
+  planks(g,16,110,416,199);
+  wall(g);
+  pixels(g,w[1],[[16,118,8,191],[424,118,8,191],[16,305,416,4]]);
+  pixels(g,w[5],[[23,119,1,184],[423,119,1,184],[19,304,409,1]]);
+  rug(g);
+  return canvas;
+}
+function drawLights(g, time) {
+  light(g,212,105,119,101,.26,'#ffd490');
+  light(g,223,182,99,74,.14,'#f8ba79');
+  light(g,280,121,67,57,.29+Math.sin(time*4)*.018,'#ffad5f');
+}
+
+
+const fleece = ['#8e7472','#b89b8a','#d8bda3','#f4ddbb','#fff0cf'];
+const skin = '#bb8b80';
+const hoof = '#4c3740';
+const poses = ['idle','blink','stepA','stepB','stepC','stepD','settle','sit','lookA','lookB'];
+const size = 40;
+
+function leg(g, x, y, kick, shade) {
+  pixels(g, ink, [[x,y,5,7],[x+kick,y+5,5,4]]);
+  pixels(g, shade, [[x+1,y,3,5],[x+kick+1,y+4,3,3]]);
+  pixels(g, hoof, [[x+kick+1,y+7,3,1]]);
+}
+function wool(g, x, y, w, h) {
+  shape(g, ink, [[x+4,y],[x+w-5,y],[x+w,y+5],[x+w,y+h-5],[x+w-5,y+h],[x+4,y+h],[x,y+h-4],[x,y+5]]);
+  pixels(g, fleece[0], [[x+2,y+5,w-4,h-9],[x+5,y+2,w-10,h-4]]);
+  pixels(g, fleece[1], [[x+2,y+5,w-4,h-11],[x+5,y+3,w-10,h-8],[x+5,y+h-6,w-10,3]]);
+  pixels(g, fleece[2], [[x+3,y+5,w-7,h-12],[x+6,y+2,w-12,h-7],[x+5,y+7,4,5]]);
+  pixels(g, fleece[3], [[x+5,y+4,w-12,3],[x+3,y+6,5,3],[x+w-12,y+7,4,3],[x+7,y+11,7,2]]);
+  pixels(g, fleece[4], [[x+6,y+4,5,2],[x+w-10,y+4,4,2]]);
+}
+function ear(g, x, y, right) {
+  const tip = right ? 7 : 0;
+  shape(g, ink, [[x,y+1],[x+7,y],[x+9,y+3],[x+tip+1,y+7],[x+2,y+6]]);
+  pixels(g, fleece[1], [[x+2,y+2,5,3]]);
+  pixels(g, skin, [[x+3,y+3,3,2]]);
+}
+
+function drawPose(g, facing, pose) {
+  const side = facing === 'east';
+  const back = facing === 'north';
+  const gait = poses.indexOf(pose) - 2;
+  const moving = gait >= 0 && gait < 4;
+  const seated = pose === 'sit';
+  const lift = moving ? [0,1,0,-1][gait] : 0;
+  const legs = moving ? [[0,-2],[-2,1],[1,0],[2,-1]][gait] : [0,0];
+  const y = (seated ? 16 : 12) + lift;
+  const tilt = pose === 'lookB' ? 2 : 0;
+  const faceX = side ? 22 : 12 + tilt;
+  const faceY = y - (back ? 7 : 5) + (pose === 'settle' ? 1 : 0);
+
+  if (side) {
+    leg(g, 10, 24 + legs[1], 0, fleece[0]);
+    leg(g, 24, 24 + legs[0], 0, fleece[0]);
+    pixels(g, ink, [[3,y+7,7,7]]);
+    pixels(g, fleece[2], [[4,y+8,5,4],[6,y+7,3,4]]);
+  }
+  leg(g, side ? 14 : 11, seated ? 26 : 26 + legs[0], moving ? legs[0] : 0, fleece[1]);
+  leg(g, side ? 26 : 24, seated ? 25 : 26 + legs[1], moving ? legs[1] : 0, fleece[1]);
+  wool(g, side ? 7 : 9, y+2, side ? 25 : 23, seated ? 16 : 17);
+
+  if (back) {
+    ear(g, 6+tilt, faceY+4, false);
+    ear(g, 24+tilt, faceY+4, true);
+    wool(g, faceX, faceY, 16, 12);
+    pixels(g, fleece[0], [[17,y+14,6,5]]);
+    pixels(g, fleece[3], [[17,y+13,5,4],[19,y+12,3,3]]);
+    return;
+  }
+  ear(g, faceX - 5, faceY+4, false);
+  if (!side) ear(g, faceX+14, faceY+4, true);
+  shape(g, ink, [[faceX+3,faceY],[faceX+14,faceY],[faceX+17,faceY+4],[faceX+16,faceY+13],[faceX+12,faceY+16],[faceX+4,faceY+15],[faceX,faceY+11],[faceX,faceY+4]]);
+  pixels(g, fleece[1], [[faceX+1,faceY+5,14,6],[faceX+3,faceY+10,11,4]]);
+  pixels(g, fleece[2], [[faceX+2,faceY+5,12,6],[faceX+5,faceY+11,9,2]]);
+  pixels(g, fleece[3], [[faceX+2,faceY+2,12,4],[faceX+4,faceY+1,8,3],[faceX+6,faceY+4,4,3]]);
+  pixels(g, ink, [[faceX+11,faceY+7,2,pose === 'blink' ? 1 : 3]]);
+  if (!side) pixels(g, ink, [[faceX+4,faceY+7,2,pose === 'blink' ? 1 : 3]]);
+  pixels(g, skin, [[faceX+(side?13:8),faceY+11,2,1]]);
+  if (side) ear(g, faceX-4, faceY+5, false);
+}
+
+function createSheet(canvas) {
+  canvas.width = size * poses.length;
+  canvas.height = size * 3;
+  const g = canvas.getContext('2d');
+  ['south','east','north'].forEach((face, row) => poses.forEach((pose, column) => {
+    g.save();
+    g.translate(size * column, size * row);
+    drawPose(g, face, pose);
+    g.restore();
+  }));
+  return canvas;
+}
+
+function lambShadow(g, lamb) {
+  const x = Math.round(lamb.x), y = Math.round(lamb.y);
+  g.save();
+  g.globalAlpha = 0.60;
+  pixels(g, '#33252e', [[x-12,y-2,24,5],[x-8,y-4,16,9]]);
+  g.restore();
+}
+
+function drawLamb(g, sheet, lamb) {
+  const facing = lamb.face === 'west' ? 'east' : lamb.face;
+  const row = ['south','east','north'].indexOf(facing);
+  let column = 0;
+  if (lamb.pose === 'walk') column = 2 + Math.floor(lamb.distance / 4.8) % 4;
+  if (lamb.pose === 'idle' && lamb.elapsed % 4.3 > 4.13) column = 1;
+  if (lamb.pose === 'settle') column = 6;
+  if (lamb.pose === 'sit') column = 7;
+  if (lamb.pose === 'look') column = lamb.elapsed % 3 > 1.45 ? 9 : 8;
+  g.save();
+  g.translate(Math.round(lamb.x), Math.round(lamb.y));
+  if (lamb.face === 'west') g.scale(-1, 1);
+  g.drawImage(sheet, column*size, row*size, size, size, -20, -34, size, size);
+  g.restore();
+}
+
+
+const canvas = document.querySelector('#room');
+const hint = document.querySelector('#hint');
+const g = canvas.getContext('2d', { alpha: false });
+const offscreen = () => document.createElement('canvas');
+const room = bakeRoom(offscreen());
+const sheet = createSheet(offscreen());
+const lamb = createLamb();
+const camera = { x: 0, y: 0 };
+const keys = new Set();
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const controls = {
+  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+  w: 'up', s: 'down', a: 'left', d: 'right'
+};
+const messages = {
+  window: 'A ovelha observa a luz nas colinas.',
+  bed: 'A ovelha se acomoda perto da cama.'
+};
+const defaultHint = 'Toque no chão para andar.';
+
+function resize() {
+  const { width, height } = canvas.parentElement.getBoundingClientRect();
+  const scale = Math.max(1, Math.round(Math.min(height / 172, width / 143)), Math.ceil(width / 330));
+  canvas.width = Math.max(1, Math.min(world.width, Math.floor(width / scale)));
+  canvas.height = Math.max(1, Math.min(world.height, Math.floor(height / scale)));
+  canvas.style.width = canvas.width * scale + 'px';
+  canvas.style.height = canvas.height * scale + 'px';
+  g.imageSmoothingEnabled = false;
+  follow(camera, lamb, canvas, Infinity);
+}
+function choose(id) {
+  if (go(lamb, targets[id], id)) {
+    hint.textContent = id === 'window' ? 'A caminho da janela…' : 'A caminho da cama…';
+  }
+}
+
+canvas.addEventListener('pointerdown', event => {
+  if (!event.isPrimary || event.button !== 0) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.round(camera.x) + (event.clientX - rect.left) * canvas.width / rect.width;
+  const y = Math.round(camera.y) + (event.clientY - rect.top) * canvas.height / rect.height;
+  if (x >= 158 && x <= 265 && y >= 30 && y <= 138) choose('window');
+  else if (x >= 300 && x <= 404 && y >= 93 && y <= 226) choose('bed');
+  else if (go(lamb, { x, y })) hint.textContent = defaultHint;
+});
+document.querySelectorAll('[data-target]').forEach(button => {
+  button.addEventListener('click', () => choose(button.dataset.target));
+});
+addEventListener('keydown', event => {
+  const key = event.key.toLowerCase();
+  if (!controls[event.key] && !controls[key] || event.altKey || event.ctrlKey || event.metaKey) return;
+  event.preventDefault();
+  if (!keys.size) hint.textContent = defaultHint;
+  keys.add(event.key.startsWith('Arrow') ? event.key : key);
+});
+addEventListener('keyup', event => {
+  keys.delete(event.key.startsWith('Arrow') ? event.key : event.key.toLowerCase());
+});
+addEventListener('blur', () => keys.clear());
+addEventListener('resize', resize);
+
+function input() {
+  const active = new Set([...keys].map(key => controls[key]));
+  return {
+    x: Number(active.has('right')) - Number(active.has('left')),
+    y: Number(active.has('down')) - Number(active.has('up'))
+  };
+}
+function draw(time) {
+  g.save();
+  g.translate(-Math.round(camera.x), -Math.round(camera.y));
+  g.drawImage(room,0,0);
+  for (const id of orderAt(lamb.y)) {
+    if (id === 'lamb') {
+      lambShadow(g,lamb);
+      drawLamb(g,sheet,lamb);
+    } else drawScenery(g,id,time);
+  }
+  drawLights(g,time);
+  g.restore();
+}
+let previous;
+function frame(now) {
+  const dt = Math.min(.035, (now - (previous ?? now)) / 1000);
+  previous = now;
+  const arrival = step(lamb, dt, input());
+  if (arrival) hint.textContent = messages[arrival];
+  follow(camera, lamb, canvas, dt);
+  draw(reducedMotion.matches ? 0 : now / 1000);
+  requestAnimationFrame(frame);
+}
+resize();
+requestAnimationFrame(frame);
+</script>
+</html>
