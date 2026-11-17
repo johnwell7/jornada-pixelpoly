@@ -1,43 +1,30 @@
-# Jornada V7.2 · O refúgio
+# Jornada V7.3 · Lar
 
-Baixe [Jornada_V7.html](Jornada_V7.html) e abra no navegador. Ele já inclui
-o código e a arte. Em um celular, esse mesmo arquivo pode ser servido por HTTP.
+Baixe [Jornada_V7.html](Jornada_V7.html) e abra no navegador. Esse arquivo
+inclui o código e a arte e pode ser aberto sem conexão. Para servir a
+versão modular, rode um servidor HTTP estático nesta pasta e abra
+`index.html`.
 
-O Lar preenche a tela na vertical. A câmera acompanha a ovelha de perto e
-ajusta o enquadramento ao observar um objeto ou deitar. A interface respeita
-as áreas seguras do aparelho. A área útil é a disponibilizada pelo navegador,
-com suporte ao viewport dinâmico. Instalação como PWA fica para uma etapa
-futura.
+A composição usa a arte aprovada do quarto. Em paisagem, o quadro inteiro
+cabe na janela. Em retrato, a câmera acompanha a ovelha de perto. Ela começa
+na almofada verde e alterna as atividades espontaneamente. Toque ou arraste
+sobre ela para fazer carinho.
 
-Deixe a tela aberta e acompanhe a ovelha. Ela pode observar a janela, explorar
-a planta, ajeitar-se no tapete, prestar atenção ao quarto ou dormir ao lado
-da cama. Toque ou arraste sobre a ovelha para fazer carinho. Um convite pode
-aparecer quando ela estiver disponível. Ele influencia sua próxima decisão.
+## Arte e navegação
 
-## Código e verificação
+- `art/refuge.webp` contém o quarto, com a área da almofada recomposta
+  onde a ovelha aparecia na ilustração.
+- `art/lamb-sprite.png` contém a personagem isolada. O renderizador usa o
+  sprite lateral e seu espelho para animar caminhada, repouso e reação
+  ao toque.
+- `art/room.mjs` define as máscaras dos móveis. A ordenação em profundidade
+  reaplica as partes do cenário que ficam à frente da personagem.
+- `navigation.mjs` contém os limites e as colisões alinhados aos móveis
+  da nova arte. `activities.mjs` liga os pontos de interesse à rotina.
+- `node build.mjs` gera o HTML autônomo.
+- `node --test tests/*.test.mjs` verifica rotas, câmera e rotina.
 
-Para servir os módulos, execute `python -m http.server 8080` nesta pasta
-e abra [localhost:8080](http://localhost:8080/). Acrescente `?debug=1`
-para testar destinos com cliques no chão em modo de desenvolvimento.
-
-- `activities.mjs` registra as atividades. Uma entrada declara `id`,
-  `interaction`, `weight(context)` e os passos de animação `after`. Atividades
-  ligadas a objetos também declaram `location` (ponto de interesse visual)
-  e `approach` (ponto caminhável com orientação e pose de chegada).
-  `available(context)` define condições. `before` permite etapas antes de
-  andar. Cada etapa define modo, pose e intervalo de duração em segundos.
-  Com `invitation`, a atividade também declara `available` e `approach`.
-- `behavior.mjs` usa cansaço, temperamento, proximidade e o histórico de
-  decisões para pesar as opções. Pode parar por um instante durante um
-  trajeto. O carinho suspende a ação e preserva o ponto de retomada.
-- `navigation.mjs` cuida das colisões e da câmera. Em rotas com alternativas
-  livres, pode passar por um ponto intermediário sem um desvio longo.
-- `node build.mjs` atualiza o HTML autônomo.
-- `node --test tests/*.test.mjs` executa os testes da câmera, das rotas e do
-  comportamento. Um ponto de interesse temporário testa o registro de novas
-  atividades.
-- Com `?observe=1`, `jornadaObservation()` no console retorna estados,
-  durações e rotas para inspeção de uma sessão local.
-
-[Captura da câmera mobile](qa/v72-mobile.png) ·
-[Registro da observação e verificação](qa/v72-observacao.md)
+Os doze testes passaram. Conferi a composição inteira no Chrome desktop
+e o enquadramento e o toque durante a caminhada em três viewports
+verticais emulados. O [registro da observação da V7.2](qa/v72-observacao.md)
+documenta a etapa anterior.

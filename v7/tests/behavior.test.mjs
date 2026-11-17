@@ -69,6 +69,7 @@ test('carinho no sono provoca reação deitada e retoma o repouso', () => {
 
 test('toques rápidos geram reação leve e convite funciona como sugestão', () => {
   const lamb = createLamb(), behavior = createBehavior(lamb,()=>.71);
+  Object.assign(lamb,{x:220,y:240});
   assert.equal(behavior.invite('bed'),false);
   assert.equal(behavior.suggestion().id,'window');
   assert.equal(behavior.invite('window'),true);

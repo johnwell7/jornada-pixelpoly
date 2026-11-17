@@ -1,5 +1,5 @@
-import { bakeRoom, drawLights, drawScenery } from './art/room.mjs';
-import { createSheet, drawLamb, lambShadow } from './art/lamb.mjs';
+import { artDensity, drawRoom, drawScenery, loadRoom } from './art/room.mjs';
+import { createSheet, drawLamb, lambBounds, lambShadow } from './art/lamb.mjs';
 import { createBehavior } from './behavior.mjs';
 import { cameraViewport, createLamb, follow, go, orderAt, step } from './navigation.mjs';
 
@@ -9,9 +9,13 @@ const bubble = document.querySelector('#bubble');
 const inviteButton = document.querySelector('#invite');
 const petButton = document.querySelector('#pet');
 const g = canvas.getContext('2d', { alpha: false });
-const offscreen = () => document.createElement('canvas');
-const room = bakeRoom(offscreen());
-const sheet = createSheet(offscreen());
+let room, sheet;
+try {
+  [room,sheet]=await Promise.all([loadRoom(),createSheet()]);
+} catch (error) {
+  hint.textContent='Não foi possível carregar a arte do Lar.';
+  throw error;
+}
 const lamb = createLamb();
 const params = new URLSearchParams(location.search);
 const observation = params.get('observe')==='1' ? [] : null;
@@ -32,12 +36,13 @@ function resize() {
   const canvasWidth = view.width*frameScale, canvasHeight = view.height*frameScale;
   left = Math.floor((width-canvasWidth)/2);
   top = Math.floor((height-canvasHeight)/2);
-  canvas.width = view.width;
-  canvas.height = view.height;
+  canvas.width = view.width*artDensity;
+  canvas.height = view.height*artDensity;
   canvas.style.width = canvasWidth+'px';
   canvas.style.height = canvasHeight+'px';
   canvas.style.left = left+'px';
   canvas.style.top = top+'px';
+  g.setTransform(artDensity,0,0,artDensity,0,0);
   g.imageSmoothingEnabled = false;
   follow(camera,lamb,view,reframe ? Infinity : 0,behavior.focus);
 }
@@ -45,14 +50,13 @@ function resize() {
 function toWorld(event) {
   const rect = canvas.getBoundingClientRect();
   return {
-    x: Math.round(camera.x)+(event.clientX-rect.left)*canvas.width/rect.width,
-    y: Math.round(camera.y)+(event.clientY-rect.top)*canvas.height/rect.height
+    x: Math.round(camera.x)+(event.clientX-rect.left)*view.width/rect.width,
+    y: Math.round(camera.y)+(event.clientY-rect.top)*view.height/rect.height
   };
 }
 function touchesLamb(point) {
-  const padding = Math.max(15,22/frameScale);
-  const low = ['sleep','lie','stir'].includes(lamb.pose);
-  return Math.abs(point.x-lamb.x) <= padding && point.y >= lamb.y-(low?21:34) && point.y <= lamb.y+6;
+  const {halfWidth,head,foot}=lambBounds(lamb);
+  return Math.abs(point.x-lamb.x)<=halfWidth && point.y>=lamb.y-head && point.y<=lamb.y+foot;
 }
 function giveAffection(stroking = false) {
   if (debug) return;
@@ -118,14 +122,13 @@ function positionInterface() {
 function draw(visibleTime) {
   g.save();
   g.translate(-Math.round(camera.x),-Math.round(camera.y));
-  g.drawImage(room,0,0);
+  drawRoom(g,room);
   for (const id of orderAt(lamb.y)) {
     if (id === 'lamb') {
       lambShadow(g,lamb);
       drawLamb(g,sheet,lamb);
-    } else drawScenery(g,id,visibleTime);
+    } else drawScenery(g,id,room,visibleTime);
   }
-  drawLights(g,visibleTime);
   g.restore();
 }
 function frame(now) {
