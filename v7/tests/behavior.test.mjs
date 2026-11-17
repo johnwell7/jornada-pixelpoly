@@ -46,7 +46,7 @@ test('carinho durante caminhada e observação preserva ação e posição', () 
   assert.equal(lamb.x,x);
   assert.equal(lamb.y,y);
   assert.equal(lamb.target,target);
-  tick(behavior,3);
+  for (let i=0;i<220&&behavior.mode!=='curious';i++) behavior.update(1/30);
   assert.equal(behavior.mode,'curious');
   behavior.pet();
   tick(behavior,1.2);

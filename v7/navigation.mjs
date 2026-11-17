@@ -118,9 +118,28 @@ export function setPose(lamb, pose) {
     if (pose === 'walk') lamb.distance = 0;
   }
 }
-export function go(lamb, destination, target = null) {
+const crossingPoints = [{x:195,y:196},{x:243,y:179},{x:256,y:213},{x:286,y:237},{x:280,y:272},{x:172,y:213}];
+function routeLength(origin, route) {
+  return route.reduce((sum, point, i) => sum + distance(i ? route[i-1] : origin,point),0);
+}
+function alternateRoute(origin, destination, direct, random) {
+  if (!direct.length || !random || random() >= .40) return direct;
+  const length = routeLength(origin,direct);
+  const start = Math.floor(random()*crossingPoints.length);
+  for (let i=0; i<crossingPoints.length; i++) {
+    const via = crossingPoints[(i+start)%crossingPoints.length];
+    if (distance(origin,via)<15 || distance(via,destination)<15) continue;
+    if (!clearSegment(origin,via) || !clearSegment(via,destination)) continue;
+    const alternative = [via,destination], detour = routeLength(origin,alternative)-length;
+    if (detour >= 4 && detour <= Math.min(29,length*.29)) return alternative;
+  }
+  return direct;
+}
+
+export function go(lamb, destination, target = null, random) {
   lamb.speed = 0;
-  lamb.path = findPath(lamb, destination);
+  lamb.path = alternateRoute(lamb,destination,findPath(lamb,destination),random);
+  lamb.arrival = destination;
   lamb.target = lamb.path.length ? target : null;
   return lamb.path.length > 0;
 }
@@ -170,8 +189,8 @@ export function step(lamb, dt, input = { x: 0, y: 0 }) {
     const arrival = lamb.target;
     lamb.target = null;
     if (arrival) {
-      lamb.face = targets[arrival].face;
-      setPose(lamb, targets[arrival].pose);
+      lamb.face = lamb.arrival.face ?? lamb.face;
+      setPose(lamb,lamb.arrival.pose ?? 'idle');
     } else setPose(lamb, 'settle');
     return arrival;
   }
@@ -181,12 +200,27 @@ export function step(lamb, dt, input = { x: 0, y: 0 }) {
 }
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-export function follow(camera, lamb, view, dt) {
-  const margin = dt === Infinity ? 0 : 12;
+export function cameraViewport(width,height) {
+  const mobile = height > width;
+  if (mobile) {
+    const scale = Math.max(1, Math.round(width/96), Math.ceil(height/world.height));
+    return {width:Math.ceil(width/scale),height:Math.ceil(height/scale),scale,mobile};
+  }
+  const scale = Math.max(1,Math.floor(width/world.width),Math.round(Math.min(height/244,width/143)));
+  return {width:Math.min(world.width,Math.floor(width/scale)),height:Math.min(world.height,Math.floor(height/scale)),scale,mobile};
+}
+
+export function follow(camera, lamb, view, dt, focus) {
+  const mobile = view.mobile ?? view.width < 160;
+  const margin = dt === Infinity ? 0 : mobile ? 5 : 12;
   const anchor = (current, ideal) => clamp(current, ideal-margin, ideal+margin);
-  const x = clamp(anchor(camera.x, lamb.x - view.width / 2), 0, world.width - view.width);
-  const y = clamp(anchor(camera.y, lamb.y - view.height * (view.width >= 320 ? 0.91 : 0.65)), 0, world.height - view.height);
-  const amount = dt === Infinity ? 1 : 1 - Math.exp(-7 * dt);
+  const xBias = mobile && focus ? clamp((focus.x-lamb.x)*.24,-12,12) : 0;
+  const yBias = mobile && focus ? clamp((focus.y-lamb.y)*.18,-12,9) : 0;
+  const lowPose = ['lie','sleep','stir'].includes(lamb.pose);
+  const vertical = mobile ? lowPose ? .62 : .59 : view.width >= 320 ? .91 : .65;
+  const x = clamp(anchor(camera.x,lamb.x+xBias-view.width/2),0,world.width-view.width);
+  const y = clamp(anchor(camera.y,lamb.y+yBias-view.height*vertical),0,world.height-view.height);
+  const amount = dt === Infinity ? 1 : 1 - Math.exp(-6 * dt);
   camera.x = clamp(camera.x + (x - camera.x) * amount, 0, world.width - view.width);
   camera.y = clamp(camera.y + (y - camera.y) * amount, 0, world.height - view.height);
 }

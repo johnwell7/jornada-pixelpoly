@@ -1,7 +1,7 @@
 import { bakeRoom, drawLights, drawScenery } from './art/room.mjs';
 import { createSheet, drawLamb, lambShadow } from './art/lamb.mjs';
 import { createBehavior } from './behavior.mjs';
-import { createLamb, follow, go, orderAt, step, world } from './navigation.mjs';
+import { cameraViewport, createLamb, follow, go, orderAt, step } from './navigation.mjs';
 
 const canvas = document.querySelector('#room');
 const hint = document.querySelector('#hint');
@@ -13,24 +13,33 @@ const offscreen = () => document.createElement('canvas');
 const room = bakeRoom(offscreen());
 const sheet = createSheet(offscreen());
 const lamb = createLamb();
-const behavior = createBehavior(lamb);
+const params = new URLSearchParams(location.search);
+const observation = params.get('observe')==='1' ? [] : null;
+const behavior = createBehavior(lamb,Math.random,{observe:observation ? event=>observation.push(event) : undefined});
 const camera = { x:0, y:0 };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const debug = new URLSearchParams(location.search).get('debug') === '1';
-let frameScale, layout, stroke;
+const debug = params.get('debug')==='1';
+let view, frameScale, layout, stroke, left, top;
 let time = 0, bubbleUntil = 0, previous, invitationId = null;
 
 function resize() {
   layout = canvas.parentElement.getBoundingClientRect();
   const { width,height } = layout;
-  frameScale = Math.max(1, Math.floor(width / world.width),
-    Math.round(Math.min(height / (width >= height ? 244 : 172), width / 143)));
-  canvas.width = Math.max(1, Math.min(world.width, Math.floor(width / frameScale)));
-  canvas.height = Math.max(1, Math.min(world.height, Math.floor(height / frameScale)));
-  canvas.style.width = canvas.width * frameScale+'px';
-  canvas.style.height = canvas.height * frameScale+'px';
+  const next = cameraViewport(width,height);
+  const reframe = !view || view.mobile!==next.mobile || view.scale!==next.scale;
+  view = next;
+  frameScale = view.scale;
+  const canvasWidth = view.width*frameScale, canvasHeight = view.height*frameScale;
+  left = Math.floor((width-canvasWidth)/2);
+  top = Math.floor((height-canvasHeight)/2);
+  canvas.width = view.width;
+  canvas.height = view.height;
+  canvas.style.width = canvasWidth+'px';
+  canvas.style.height = canvasHeight+'px';
+  canvas.style.left = left+'px';
+  canvas.style.top = top+'px';
   g.imageSmoothingEnabled = false;
-  follow(camera,lamb,canvas,Infinity);
+  follow(camera,lamb,view,reframe ? Infinity : 0,behavior.focus);
 }
 
 function toWorld(event) {
@@ -86,8 +95,6 @@ inviteButton.addEventListener('click', () => {
 addEventListener('resize',resize);
 
 function positionInterface() {
-  const left = (layout.width-canvas.width*frameScale)/2;
-  const top = (layout.height-canvas.height*frameScale)/2;
   const x = left+(Math.round(lamb.x)-Math.round(camera.x))*frameScale;
   const y = top+(Math.round(lamb.y)-Math.round(camera.y))*frameScale;
   petButton.style.left = x+'px';
@@ -127,10 +134,16 @@ function frame(now) {
   time += dt;
   if (debug) step(lamb,dt);
   else behavior.update(dt);
-  follow(camera,lamb,canvas,dt);
+  follow(camera,lamb,view,dt,behavior.focus);
   draw(reducedMotion.matches ? 0 : time);
   positionInterface();
   requestAnimationFrame(frame);
+}
+if (observation) {
+  globalThis.jornadaObservation = () => ({
+    time, mode:behavior.mode, camera:{...camera}, view:{...view},
+    lamb:{x:lamb.x,y:lamb.y,pose:lamb.pose,face:lamb.face}, events:observation.slice()
+  });
 }
 resize();
 requestAnimationFrame(frame);

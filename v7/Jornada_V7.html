@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
 <meta charset="utf-8">
+<meta name="theme-color" content="#231922">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Jornada · O refúgio</title>
 <style>
@@ -13,14 +14,15 @@
 * { box-sizing: border-box; }
 body { margin: 0; }
 main { position: relative; height: 100vh; height: 100dvh; overflow: hidden; background: #281e27; }
-canvas { display: block; position: absolute; inset: 0; margin: auto; image-rendering: pixelated; touch-action: none; }
+canvas { display: block; position: absolute; image-rendering: pixelated; touch-action: none; }
 header {
   position: absolute; inset: 0 0 auto; padding-top: max(14px, env(safe-area-inset-top));
   text-align: center; pointer-events: none;
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
 }
 h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 2.2rem); font-weight: normal; letter-spacing: .12em; text-shadow: 0 2px #261c25, 0 4px #261c25; }
 footer {
-  position: absolute; inset: auto 0 0; padding: 12px 12px max(10px, env(safe-area-inset-bottom));
+  position: absolute; inset: auto 0 0; padding: 12px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   pointer-events: none; text-align: center;
 }
 p { margin: 0; }
@@ -174,9 +176,28 @@ function setPose(lamb, pose) {
     if (pose === 'walk') lamb.distance = 0;
   }
 }
-function go(lamb, destination, target = null) {
+const crossingPoints = [{x:195,y:196},{x:243,y:179},{x:256,y:213},{x:286,y:237},{x:280,y:272},{x:172,y:213}];
+function routeLength(origin, route) {
+  return route.reduce((sum, point, i) => sum + distance(i ? route[i-1] : origin,point),0);
+}
+function alternateRoute(origin, destination, direct, random) {
+  if (!direct.length || !random || random() >= .40) return direct;
+  const length = routeLength(origin,direct);
+  const start = Math.floor(random()*crossingPoints.length);
+  for (let i=0; i<crossingPoints.length; i++) {
+    const via = crossingPoints[(i+start)%crossingPoints.length];
+    if (distance(origin,via)<15 || distance(via,destination)<15) continue;
+    if (!clearSegment(origin,via) || !clearSegment(via,destination)) continue;
+    const alternative = [via,destination], detour = routeLength(origin,alternative)-length;
+    if (detour >= 4 && detour <= Math.min(29,length*.29)) return alternative;
+  }
+  return direct;
+}
+
+function go(lamb, destination, target = null, random) {
   lamb.speed = 0;
-  lamb.path = findPath(lamb, destination);
+  lamb.path = alternateRoute(lamb,destination,findPath(lamb,destination),random);
+  lamb.arrival = destination;
   lamb.target = lamb.path.length ? target : null;
   return lamb.path.length > 0;
 }
@@ -226,8 +247,8 @@ function step(lamb, dt, input = { x: 0, y: 0 }) {
     const arrival = lamb.target;
     lamb.target = null;
     if (arrival) {
-      lamb.face = targets[arrival].face;
-      setPose(lamb, targets[arrival].pose);
+      lamb.face = lamb.arrival.face ?? lamb.face;
+      setPose(lamb,lamb.arrival.pose ?? 'idle');
     } else setPose(lamb, 'settle');
     return arrival;
   }
@@ -237,12 +258,27 @@ function step(lamb, dt, input = { x: 0, y: 0 }) {
 }
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-function follow(camera, lamb, view, dt) {
-  const margin = dt === Infinity ? 0 : 12;
+function cameraViewport(width,height) {
+  const mobile = height > width;
+  if (mobile) {
+    const scale = Math.max(1, Math.round(width/96), Math.ceil(height/world.height));
+    return {width:Math.ceil(width/scale),height:Math.ceil(height/scale),scale,mobile};
+  }
+  const scale = Math.max(1,Math.floor(width/world.width),Math.round(Math.min(height/244,width/143)));
+  return {width:Math.min(world.width,Math.floor(width/scale)),height:Math.min(world.height,Math.floor(height/scale)),scale,mobile};
+}
+
+function follow(camera, lamb, view, dt, focus) {
+  const mobile = view.mobile ?? view.width < 160;
+  const margin = dt === Infinity ? 0 : mobile ? 5 : 12;
   const anchor = (current, ideal) => clamp(current, ideal-margin, ideal+margin);
-  const x = clamp(anchor(camera.x, lamb.x - view.width / 2), 0, world.width - view.width);
-  const y = clamp(anchor(camera.y, lamb.y - view.height * (view.width >= 320 ? 0.91 : 0.65)), 0, world.height - view.height);
-  const amount = dt === Infinity ? 1 : 1 - Math.exp(-7 * dt);
+  const xBias = mobile && focus ? clamp((focus.x-lamb.x)*.24,-12,12) : 0;
+  const yBias = mobile && focus ? clamp((focus.y-lamb.y)*.18,-12,9) : 0;
+  const lowPose = ['lie','sleep','stir'].includes(lamb.pose);
+  const vertical = mobile ? lowPose ? .62 : .59 : view.width >= 320 ? .91 : .65;
+  const x = clamp(anchor(camera.x,lamb.x+xBias-view.width/2),0,world.width-view.width);
+  const y = clamp(anchor(camera.y,lamb.y+yBias-view.height*vertical),0,world.height-view.height);
+  const amount = dt === Infinity ? 1 : 1 - Math.exp(-6 * dt);
   camera.x = clamp(camera.x + (x - camera.x) * amount, 0, world.width - view.width);
   camera.y = clamp(camera.y + (y - camera.y) * amount, 0, world.height - view.height);
 }
@@ -251,138 +287,215 @@ function orderAt(y) {
 }
 
 
-const seconds = { window: [5, 10], plant: [3, 6], rug: [4, 9], bed: [13, 25] };
-const range = (rng, min, max) => min + rng() * (max-min);
-const gap = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
-const destinationName = { window: 'Observar a janela?', bed: 'Descansar perto da cama?' };
+const phase = (mode, pose, duration) => ({mode,pose,duration});
+const activities = [
+  {
+    id:'window', location:{x:212,y:75}, approach:targets.window, interaction:'observe',
+    invitation:'Observar a janela?', available:({sleepiness})=>sleepiness<.91,
+    weight:({visits})=>visits ? 1.65 : 5.4,
+    after:[phase('curious','look',[4,15])]
+  },
+  {
+    id:'plant', location:{x:150,y:157}, approach:targets.plant, interaction:'inspect',
+    available:({sleepiness})=>sleepiness<.86, weight:({distance})=>distance<70 ? 2.4 : 1.35,
+    after:[phase('curious','look',[2.8,9])]
+  },
+  {
+    id:'rug', location:{x:196,y:245}, approach:targets.rug, interaction:'settle',
+    available:({distance,sleepiness})=>distance>17 && sleepiness<.95,
+    weight:({sleepiness})=>1.1+sleepiness*.7, after:[phase('calm','sit',[5,18])]
+  },
+  {
+    id:'bed', location:{x:352,y:181}, approach:targets.bed, interaction:'sleep',
+    invitation:'Descansar perto da cama?', available:({sleepiness})=>sleepiness>=.46,
+    weight:({sleepiness})=>1 + sleepiness**3*9,
+    before:[{...phase('drowsy','yawn',[.95,2.5]),face:'east'}],
+    after:[phase('settling','sit',[.65,2.2]),phase('lying','lie',[.6,.95]),
+      phase('sleeping','sleep',[17,39]),phase('waking','wake',[.75,1.1]),phase('calm','sit',[2,11])]
+  },
+  {
+    id:'pause', interaction:'rest',
+    available:()=>true, weight:({sleepiness})=>sleepiness>.9 ? .65 : 2.25,
+    after:[phase('calm','sit',[5,21])]
+  },
+  {
+    id:'listen', interaction:'observe',
+    available:({sleepiness})=>sleepiness<.93, weight:({sleepiness})=>1.5-sleepiness*.5,
+    after:[phase('calm','idle',[3,11]),phase('playful','perk',[.7,2.8])]
+  }
+];
 
-function createBehavior(lamb, random = Math.random) {
-  let mode = 'calm', remaining = range(random, 3, 6);
-  let sleepiness = range(random, .12, .26), destination = null, last = 'rug';
-  let invitation = null, interaction = null, recentlyTouched = [];
-  let clock = 0, sinceSpoke = -Infinity;
-  const visits = { window: 0, plant: 0, rug: 0, bed: 0 };
-  setPose(lamb, 'sit');
 
-  function enter(next, pose, time) {
+const range = (rng,min,max)=>min+rng()*(max-min);
+const gap = (a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const indoors = ['calm','curious','playful','waking'];
+const restingModes = ['lying','sleeping'];
+const positionOf = ({x,y})=>({x,y});
+
+function createBehavior(lamb, random = Math.random, {catalog = activities, observe} = {}) {
+  let mode = 'calm', remaining = range(random,3,6), clock = 0, sinceSpoke = -Infinity;
+  let sleepiness = range(random,.12,.26), temperament = range(random,.77,1.18);
+  let active = null, phases = [], stop = null, invitation = null, interaction = null;
+  let recentlyTouched = [], suggestionFor = null, latestContext = -Infinity;
+  const recent = [], visits = new Map();
+  setPose(lamb,'sit');
+
+  function enter(next, pose, duration) {
     mode = next;
-    remaining = time;
-    setPose(lamb, pose);
+    remaining = duration;
+    setPose(lamb,pose);
+    observe?.({type:'phase',time:clock,id:active?.id,mode,duration});
   }
 
-  function travel(id) {
-    destination = id;
-    if (go(lamb, targets[id], id)) mode = 'walking';
-    else {
-      destination = null;
-      enter('calm', 'idle', range(random, 2, 4));
+  function advance() {
+    const phase = phases.shift();
+    if (!phase) {
+      if (active) observe?.({type:'finish',time:clock,id:active.id});
+      active = null;
+      choose();
+      return;
     }
+    if (!phase.travel) {
+      if (phase.face) lamb.face = phase.face;
+      enter(phase.mode,phase.pose,range(random,...phase.duration));
+      return;
+    }
+
+    if (!go(lamb,active.approach,active.id,random)) {
+      phases = [];
+      enter('calm','sit',range(random,3,7));
+      return;
+    }
+    const route = lamb.path.map(positionOf), from = positionOf(lamb);
+    stop = gap(lamb,active.approach)>83 && sleepiness<.86 && random()<.22 ? clock+range(random,1.05,1.68) : null;
+    observe?.({type:'travel',time:clock,id:active.id,from,route});
+    mode = 'walking';
   }
 
-  function choose() {
-    const weights = {
-      window: visits.window ? 2.1 : 8,
-      plant: visits.window ? 1.25 : .32,
-      rug: gap(lamb,targets.rug) < 22 ? .18 : .9,
-      bed: sleepiness >= .56 ? 1 + sleepiness ** 2 * 8 : .02
+  function context(activity) {
+    return {
+      sleepiness,
+      distance:activity.approach ? gap(lamb,activity.approach) : 0,
+      visits:visits.get(activity.id)??0
     };
-    if (last) weights[last] *= .10;
-    if (sleepiness > .82) weights.bed *= 2.6;
-    if (invitation && clock <= invitation.until) weights[invitation.id] += 6;
-    const entries = Object.entries(weights);
-    let pick = random() * entries.reduce((sum,[,value]) => sum+value,0);
-    const selected = entries.find(([,value]) => (pick -= value) < 0)?.[0] ?? 'window';
-    invitation = null;
-    if (selected === 'bed') {
-      destination = 'bed';
-      lamb.face = 'east';
-      enter('drowsy','yawn',range(random,1.2,1.8));
-    } else if (selected === 'rug' && gap(lamb,targets.rug) < 12) {
-      enter('playful','perk',range(random,1.1,2.3));
-    } else {
-      travel(selected);
+  }
+  function cadenceWeight(id) {
+    const previous = recent.at(-1);
+    const lastUse = recent.findLastIndex(entry=>entry.id===id);
+    const age = lastUse<0 ? Infinity : clock-recent[lastUse].at;
+    const recency = age < 12 ? .13 : age < 32 ? .39 : age < 60 ? .73 : 1;
+
+    let repeatedLinks = 0, repeatedPhrase = false;
+    for (let i=1;i<recent.length;i++) {
+      if (recent[i-1].id!==previous?.id || recent[i].id!==id) continue;
+      repeatedLinks++;
+      if (i>1 && recent[i-2].id===recent.at(-2)?.id) repeatedPhrase = true;
     }
+    return recency / (1+repeatedLinks*.46) * (repeatedPhrase ? .50 : 1);
+  }
+  function choose() {
+    const choices = catalog.flatMap(activity=>{
+      const current = context(activity);
+      if (activity.available && !activity.available(current)) return [];
+      const bias = activity.interaction==='inspect' || activity.interaction==='observe' ? temperament : 1;
+      const boost = invitation?.id===activity.id && clock<=invitation.until ? 5.4 : 0;
+      const restNeed = activity.interaction==='sleep' && sleepiness>.86 ? 3 : 1;
+      const value = (activity.weight(current)*bias*cadenceWeight(activity.id)+boost)*restNeed;
+      return [[activity,value]];
+    });
+    invitation = null;
+    let roll = random()*choices.reduce((sum,[,weight])=>sum+weight,0);
+    active = choices.find(([,weight])=>(roll-=weight)<0)?.[0] ?? choices.at(-1)?.[0];
+    if (!active) {
+      enter('calm','sit',range(random,5,10));
+      return;
+    }
+    recent.push({id:active.id,at:clock});
+    if (recent.length>10) recent.shift();
+    visits.set(active.id,(visits.get(active.id)??0)+1);
+    observe?.({type:'start',time:clock,id:active.id});
+    phases = [...(active.before??[]),...(active.approach ? [{travel:true}] : []),...active.after];
+    advance();
   }
 
   function update(dt) {
-    clock += dt;
+    clock+=dt;
     if (interaction) {
-      interaction.remaining -= dt;
-      lamb.elapsed += dt;
-      if (interaction.remaining <= 0) {
-        const { pose, face, elapsed } = interaction.resume;
-        Object.assign(lamb,{pose,face,elapsed});
-        interaction = null;
+      interaction.remaining-=dt;
+      lamb.elapsed+=dt;
+      if (interaction.remaining<=0) {
+        Object.assign(lamb,interaction.resume);
+        interaction=null;
       }
       return;
     }
-    sleepiness = Math.max(0, Math.min(1, sleepiness + dt * (mode === 'sleeping' ? -.05 : .031)));
-    const arrived = step(lamb,dt);
-    if (arrived && mode === 'walking') {
-      last = arrived;
-      visits[arrived]++;
-      if (arrived === 'bed') enter('settling','sit',range(random,1.0,1.65));
-      else if (arrived === 'rug') enter('calm','sit',range(random,...seconds.rug));
-      else enter('curious','look',range(random,...seconds[arrived]));
+    const fatigue = mode==='sleeping' ? -.040 : mode==='walking' ? .028 : mode==='calm' ? .008 : .015;
+    sleepiness=Math.max(0,Math.min(1,sleepiness+dt*fatigue*temperament));
+
+    if (mode==='pauseWalk') {
+      lamb.elapsed+=dt;
+      remaining-=dt;
+      if (remaining<=0) mode='walking';
       return;
     }
-    if (mode === 'walking') return;
-    remaining -= dt;
-    if (remaining > 0) return;
-    switch (mode) {
-      case 'drowsy':
-        travel(destination);
-        break;
-      case 'settling':
-        enter('lying','lie',.65);
-        break;
-      case 'lying':
-        enter('sleeping','sleep',range(random,...seconds.bed));
-        break;
-      case 'sleeping':
-        enter('waking','wake',.9);
-        break;
-      case 'waking':
-        enter('calm','sit',range(random,3,6));
-        break;
-      default:
-        choose();
+    const arrived=step(lamb,dt);
+    if (mode==='walking') {
+      if (arrived) {
+        observe?.({type:'arrive',time:clock,id:arrived,at:positionOf(lamb)});
+        stop=null;
+        advance();
+      } else if (stop!==null && clock>=stop && gap(lamb,active.approach)>28) {
+        stop=null;
+        lamb.speed=0;
+        enter('pauseWalk','look',range(random,.6,2.0));
+      }
+      return;
     }
+    remaining-=dt;
+    if (remaining<=0) advance();
   }
 
   function pet(stroking = false) {
-    recentlyTouched = recentlyTouched.filter(time => clock-time < 1.4);
+    recentlyTouched=recentlyTouched.filter(at=>clock-at<1.4);
     if (!stroking) recentlyTouched.push(clock);
-    const bothered = recentlyTouched.length >= 4;
+    const bothered=recentlyTouched.length>=4;
     if (!interaction) {
-      interaction = { resume: { pose:lamb.pose, face:lamb.face, elapsed:lamb.elapsed }, remaining:0 };
-      lamb.speed = 0;
+      interaction={resume:{pose:lamb.pose,face:lamb.face,elapsed:lamb.elapsed},remaining:0};
+      lamb.speed=0;
+      observe?.({type:'pet',time:clock,id:active?.id,mode});
     }
-    const resting = ['lying','sleeping'].includes(mode);
-    const pose = resting ? 'stir' : bothered ? 'ruffled' : 'pet';
-    if (!resting) lamb.face = 'south';
-    setPose(lamb,pose);
-    interaction.remaining = bothered ? .8 : 1.05;
-    if (stroking || clock-sinceSpoke < 18 || !bothered && random() > .22) return '';
-    sinceSpoke = clock;
+    const resting=restingModes.includes(mode);
+    if (!resting) lamb.face='south';
+    setPose(lamb,resting ? 'stir' : bothered ? 'ruffled' : 'pet');
+    interaction.remaining=bothered ? .8 : 1.05;
+    if (stroking || clock-sinceSpoke<18 || !bothered && random()>.22) return '';
+    sinceSpoke=clock;
     return bothered && !resting ? 'Ei… devagarinho.' : 'Mmé.';
   }
 
   function suggestion() {
-    if (interaction || invitation || !['calm','curious','playful','waking'].includes(mode)) return null;
-    const id = sleepiness >= .56 ? 'bed' : 'window';
-    if (id === last || gap(lamb,targets[id]) > 129) return null;
-    return { id, label: destinationName[id] };
+    if (interaction || invitation || !indoors.includes(mode)) return null;
+    if (clock-latestContext>.4) {
+      latestContext=clock;
+      const available=catalog.filter(activity=>activity.invitation && active?.id!==activity.id &&
+        context(activity).distance<129 && activity.available(context(activity)));
+      const choice=available.find(activity=>activity.interaction==='sleep')??available[0];
+      suggestionFor=choice ? {id:choice.id,label:choice.invitation} : null;
+    }
+    return suggestionFor;
   }
 
   function invite(id) {
-    if (suggestion()?.id !== id) return false;
-    invitation = { id, until: clock+20 };
-    remaining = Math.min(remaining,range(random,1.8,3.6));
+    if (!id || suggestion()?.id!==id) return false;
+    invitation={id,until:clock+25};
+    remaining=Math.min(remaining,range(random,1.8,3.6));
     return true;
   }
 
-  return { update, pet, suggestion, invite, get mode(){return interaction ? 'interacting' : mode;} };
+  return {update,pet,suggestion,invite,
+    get mode(){return interaction ? 'interacting' : mode;},
+    get focus(){return !interaction && (mode==='curious' || restingModes.includes(mode)) ? active?.location : null;}
+  };
 }
 
 const ink = '#2b2029';
@@ -870,24 +983,33 @@ const offscreen = () => document.createElement('canvas');
 const room = bakeRoom(offscreen());
 const sheet = createSheet(offscreen());
 const lamb = createLamb();
-const behavior = createBehavior(lamb);
+const params = new URLSearchParams(location.search);
+const observation = params.get('observe')==='1' ? [] : null;
+const behavior = createBehavior(lamb,Math.random,{observe:observation ? event=>observation.push(event) : undefined});
 const camera = { x:0, y:0 };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const debug = new URLSearchParams(location.search).get('debug') === '1';
-let frameScale, layout, stroke;
+const debug = params.get('debug')==='1';
+let view, frameScale, layout, stroke, left, top;
 let time = 0, bubbleUntil = 0, previous, invitationId = null;
 
 function resize() {
   layout = canvas.parentElement.getBoundingClientRect();
   const { width,height } = layout;
-  frameScale = Math.max(1, Math.floor(width / world.width),
-    Math.round(Math.min(height / (width >= height ? 244 : 172), width / 143)));
-  canvas.width = Math.max(1, Math.min(world.width, Math.floor(width / frameScale)));
-  canvas.height = Math.max(1, Math.min(world.height, Math.floor(height / frameScale)));
-  canvas.style.width = canvas.width * frameScale+'px';
-  canvas.style.height = canvas.height * frameScale+'px';
+  const next = cameraViewport(width,height);
+  const reframe = !view || view.mobile!==next.mobile || view.scale!==next.scale;
+  view = next;
+  frameScale = view.scale;
+  const canvasWidth = view.width*frameScale, canvasHeight = view.height*frameScale;
+  left = Math.floor((width-canvasWidth)/2);
+  top = Math.floor((height-canvasHeight)/2);
+  canvas.width = view.width;
+  canvas.height = view.height;
+  canvas.style.width = canvasWidth+'px';
+  canvas.style.height = canvasHeight+'px';
+  canvas.style.left = left+'px';
+  canvas.style.top = top+'px';
   g.imageSmoothingEnabled = false;
-  follow(camera,lamb,canvas,Infinity);
+  follow(camera,lamb,view,reframe ? Infinity : 0,behavior.focus);
 }
 
 function toWorld(event) {
@@ -943,8 +1065,6 @@ inviteButton.addEventListener('click', () => {
 addEventListener('resize',resize);
 
 function positionInterface() {
-  const left = (layout.width-canvas.width*frameScale)/2;
-  const top = (layout.height-canvas.height*frameScale)/2;
   const x = left+(Math.round(lamb.x)-Math.round(camera.x))*frameScale;
   const y = top+(Math.round(lamb.y)-Math.round(camera.y))*frameScale;
   petButton.style.left = x+'px';
@@ -984,10 +1104,16 @@ function frame(now) {
   time += dt;
   if (debug) step(lamb,dt);
   else behavior.update(dt);
-  follow(camera,lamb,canvas,dt);
+  follow(camera,lamb,view,dt,behavior.focus);
   draw(reducedMotion.matches ? 0 : time);
   positionInterface();
   requestAnimationFrame(frame);
+}
+if (observation) {
+  globalThis.jornadaObservation = () => ({
+    time, mode:behavior.mode, camera:{...camera}, view:{...view},
+    lamb:{x:lamb.x,y:lamb.y,pose:lamb.pose,face:lamb.face}, events:observation.slice()
+  });
 }
 resize();
 requestAnimationFrame(frame);
