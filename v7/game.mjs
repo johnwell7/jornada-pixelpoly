@@ -1,149 +1,69 @@
-import { bakeRoom, drawLights, drawScenery } from './art/room.mjs';
-import { createSheet, drawLamb, lambShadow } from './art/lamb.mjs';
-import { createBehavior } from './behavior.mjs';
-import { cameraViewport, createLamb, follow, go, orderAt, step } from './navigation.mjs';
+import { cameraViewport, follow } from './navigation.mjs';
+import { bindRoomControls } from './room-controls.mjs';
+import { createRoomInterface } from './room-interface.mjs';
+import { createRoomRenderer } from './room-renderer.mjs';
+import { createRoomSession } from './room-session.mjs';
 
-const canvas = document.querySelector('#room');
-const hint = document.querySelector('#hint');
-const bubble = document.querySelector('#bubble');
-const inviteButton = document.querySelector('#invite');
-const petButton = document.querySelector('#pet');
-const g = canvas.getContext('2d', { alpha: false });
-const offscreen = () => document.createElement('canvas');
-const room = bakeRoom(offscreen());
-const sheet = createSheet(offscreen());
-const lamb = createLamb();
-const params = new URLSearchParams(location.search);
-const observation = params.get('observe')==='1' ? [] : null;
-const behavior = createBehavior(lamb,Math.random,{observe:observation ? event=>observation.push(event) : undefined});
-const camera = { x:0, y:0 };
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const debug = params.get('debug')==='1';
-let view, frameScale, layout, stroke, left, top;
-let time = 0, bubbleUntil = 0, previous, invitationId = null;
+const canvas=document.querySelector('#room');
+const params=new URLSearchParams(location.search);
+const debug=params.get('debug')==='1';
+const observe=params.get('observe')==='1';
+const trace=observe ? [] : null;
+const session=createRoomSession({debug,onActivity:trace ? event=>trace.push(event) : undefined});
+const {lamb}=session;
+const renderer=createRoomRenderer(canvas);
+const camera={x:0,y:0};
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+const ui=createRoomInterface(canvas.parentElement,{pet,invite:session.invite,suggestion:session.suggestion});
+let view,layout,left,top,previous;
+
+function pet(stroking=false) {
+  const affection=session.pet(stroking);
+  if (affection) ui.affection(affection);
+}
 
 function resize() {
-  layout = canvas.parentElement.getBoundingClientRect();
-  const { width,height } = layout;
-  const next = cameraViewport(width,height);
-  const reframe = !view || view.mobile!==next.mobile || view.scale!==next.scale;
-  view = next;
-  frameScale = view.scale;
-  const canvasWidth = view.width*frameScale, canvasHeight = view.height*frameScale;
-  left = Math.floor((width-canvasWidth)/2);
-  top = Math.floor((height-canvasHeight)/2);
-  canvas.width = view.width;
-  canvas.height = view.height;
-  canvas.style.width = canvasWidth+'px';
-  canvas.style.height = canvasHeight+'px';
-  canvas.style.left = left+'px';
-  canvas.style.top = top+'px';
-  g.imageSmoothingEnabled = false;
-  follow(camera,lamb,view,reframe ? Infinity : 0,behavior.focus);
+  layout=canvas.parentElement.getBoundingClientRect();
+  const {width,height}=layout;
+  const next=cameraViewport(width,height);
+  const reframe=!view || view.mobile!==next.mobile || view.scale!==next.scale;
+  view=next;
+  left=Math.floor((width-view.width*view.scale)/2);
+  top=Math.floor((height-view.height*view.scale)/2);
+  renderer.resize({...view,left,top});
+  follow(camera,lamb,view,reframe ? Infinity : 0,session.focus);
 }
 
-function toWorld(event) {
-  const rect = canvas.getBoundingClientRect();
+function project(event) {
+  const rect=canvas.getBoundingClientRect();
   return {
-    x: Math.round(camera.x)+(event.clientX-rect.left)*canvas.width/rect.width,
-    y: Math.round(camera.y)+(event.clientY-rect.top)*canvas.height/rect.height
+    x:Math.round(camera.x)+(event.clientX-rect.left)*canvas.width/rect.width,
+    y:Math.round(camera.y)+(event.clientY-rect.top)*canvas.height/rect.height
   };
 }
-function touchesLamb(point) {
-  const padding = Math.max(15,22/frameScale);
-  const low = ['sleep','lie','stir'].includes(lamb.pose);
-  return Math.abs(point.x-lamb.x) <= padding && point.y >= lamb.y-(low?21:34) && point.y <= lamb.y+6;
-}
-function giveAffection(stroking = false) {
-  if (debug) return;
-  hint.hidden = true;
-  const line = behavior.pet(stroking);
-  if (line) {
-    bubble.textContent = line;
-    bubble.toggleAttribute('data-visible', true);
-    bubbleUntil = time+2.2;
-  }
-}
-canvas.addEventListener('pointerdown', event => {
-  if (!event.isPrimary || event.button !== 0) return;
-  const point = toWorld(event);
-  if (debug) {
-    go(lamb,point);
-  } else if (touchesLamb(point)) {
-    stroke = { id:event.pointerId, x:event.clientX, y:event.clientY, time };
-    canvas.setPointerCapture(event.pointerId);
-    giveAffection();
-  }
-});
-canvas.addEventListener('pointermove', event => {
-  if (stroke?.id !== event.pointerId || time-stroke.time < .28 ||
-    Math.hypot(event.clientX-stroke.x,event.clientY-stroke.y) < 8 ||
-    !touchesLamb(toWorld(event))) return;
-  stroke = { id:event.pointerId, x:event.clientX, y:event.clientY, time };
-  giveAffection(true);
-});
-for (const name of ['pointerup','pointercancel','lostpointercapture']) {
-  canvas.addEventListener(name,event => { if (stroke?.id === event.pointerId) stroke = null; });
-}
-petButton.addEventListener('click', () => giveAffection());
-inviteButton.addEventListener('click', () => {
-  if (behavior.invite(invitationId)) {
-    hint.hidden = true;
-    inviteButton.hidden = true;
-  }
+
+bindRoomControls(canvas,{
+  debug,lamb,pet,project,move:session.moveTo,clock:()=>session.time,scale:()=>view.scale
 });
 addEventListener('resize',resize);
 
-function positionInterface() {
-  const x = left+(Math.round(lamb.x)-Math.round(camera.x))*frameScale;
-  const y = top+(Math.round(lamb.y)-Math.round(camera.y))*frameScale;
-  petButton.style.left = x+'px';
-  petButton.style.top = y-14*frameScale+'px';
-  if (bubbleUntil) {
-    bubble.style.left = Math.max(60,Math.min(layout.width-60,x))+'px';
-    bubble.style.top = Math.max(66,y-36*frameScale)+'px';
-    if (time >= bubbleUntil) {
-      bubble.toggleAttribute('data-visible',false);
-      bubbleUntil = 0;
-    }
-  }
-  if (time > 11) hint.hidden = true;
-  const suggestion = hint.hidden && !debug ? behavior.suggestion() : null;
-  if (suggestion?.id !== invitationId || suggestion === null && !inviteButton.hidden) {
-    invitationId = suggestion?.id ?? null;
-    inviteButton.hidden = !suggestion;
-    if (suggestion) inviteButton.textContent = suggestion.label;
-  }
-}
-function draw(visibleTime) {
-  g.save();
-  g.translate(-Math.round(camera.x),-Math.round(camera.y));
-  g.drawImage(room,0,0);
-  for (const id of orderAt(lamb.y)) {
-    if (id === 'lamb') {
-      lambShadow(g,lamb);
-      drawLamb(g,sheet,lamb);
-    } else drawScenery(g,id,visibleTime);
-  }
-  drawLights(g,visibleTime);
-  g.restore();
-}
 function frame(now) {
-  const dt = Math.min(.035,(now-(previous??now))/1000);
-  previous = now;
-  time += dt;
-  if (debug) step(lamb,dt);
-  else behavior.update(dt);
-  follow(camera,lamb,view,dt,behavior.focus);
-  draw(reducedMotion.matches ? 0 : time);
-  positionInterface();
+  const dt=Math.min(.035,(now-(previous??now))/1000);
+  previous=now;
+  session.advance(dt);
+  follow(camera,lamb,view,dt,session.focus);
+  renderer.draw(lamb,camera,reducedMotion.matches ? 0 : session.time);
+  ui.update({
+    time:session.time,scale:view.scale,width:layout.width,
+    x:left+(Math.round(lamb.x)-Math.round(camera.x))*view.scale,
+    y:top+(Math.round(lamb.y)-Math.round(camera.y))*view.scale
+  });
   requestAnimationFrame(frame);
 }
-if (observation) {
-  globalThis.jornadaObservation = () => ({
-    time, mode:behavior.mode, camera:{...camera}, view:{...view},
-    lamb:{x:lamb.x,y:lamb.y,pose:lamb.pose,face:lamb.face}, events:observation.slice()
-  });
+
+if (trace) {
+  globalThis.jornadaObservation=()=>({...session.observation(),camera:{...camera},view:{...view},events:trace.slice()});
 }
 resize();
 requestAnimationFrame(frame);
+

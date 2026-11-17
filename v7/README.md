@@ -41,3 +41,34 @@ para testar destinos com cliques no chão em modo de desenvolvimento.
 
 [Captura da câmera mobile](qa/v72-mobile.png) ·
 [Registro da observação e verificação](qa/v72-observacao.md)
+
+## Arquitetura do Lar
+
+`Jornada_V7.html` é um artefato de distribuição montado pelo `build.mjs`.
+A entrada modular é `index.html` e a fonte permanece nos módulos abaixo.
+
+| Módulo | Responsabilidade |
+|---|---|
+| `game.mjs` | Compõe os módulos, roda o loop de quadro e aplica a câmera. |
+| `room-session.mjs` | Expõe os comandos da sessão, a projeção do estado da ovelha e a saída de eventos da atividade. |
+| `behavior.mjs` · `activities.mjs` | Decisões da ovelha, registro das atividades e respostas ao carinho. |
+| `room-objects.mjs` · `navigation.mjs` | Objetos do quarto, pontos de interação, colisões, rotas e câmera. |
+| `room-renderer.mjs` · `art/` | Desenho do cenário, profundidade, luz e animação. |
+| `room-controls.mjs` · `room-interface.mjs` · `room.css` | Gestos no canvas, controles da interface e estilos. |
+
+O módulo de composição liga a interface aos comandos `pet` e `invite` da
+sessão. A interface recebe a posição projetada da ovelha e dados de
+apresentação. A sessão funciona sem DOM e sem conhecer o renderizador.
+
+`createRoomSession({onActivity})` fornece os eventos de domínio que já
+alimentam o modo `observe`. Um sistema de progresso futuro pode consumir
+esses eventos na composição da aplicação e gerenciar a própria
+persistência sem depender do canvas ou dos elementos HTML.
+
+### Validação da refatoração
+
+Os 13 testes automatizados passaram. No Chrome, o HTML anterior, o HTML
+reconstruído e a entrada modular servida por HTTP produziram os mesmos
+estados e quadros em nove pontos de uma sequência determinística. A
+verificação cobriu tela vertical emulada, desktop, caminhada, carinho por
+toque e arrasto, sono, convite e deslocamento em modo de desenvolvimento.
