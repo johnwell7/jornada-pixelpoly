@@ -3,23 +3,23 @@ import { targets } from './navigation.mjs';
 const phase = (mode, pose, duration) => ({mode,pose,duration});
 export const activities = [
   {
-    id:'window', location:{x:223,y:85}, approach:targets.window, interaction:'observe',
+    id:'window', location:{x:212,y:75}, approach:targets.window, interaction:'observe',
     invitation:'Observar a janela?', available:({sleepiness})=>sleepiness<.91,
     weight:({visits})=>visits ? 1.65 : 5.4,
     after:[phase('curious','look',[4,15])]
   },
   {
-    id:'plant', location:{x:135,y:192}, approach:targets.plant, interaction:'inspect',
+    id:'plant', location:{x:150,y:157}, approach:targets.plant, interaction:'inspect',
     available:({sleepiness})=>sleepiness<.86, weight:({distance})=>distance<70 ? 2.4 : 1.35,
     after:[phase('curious','look',[2.8,9])]
   },
   {
-    id:'rug', location:{x:194,y:293}, approach:targets.rug, interaction:'settle',
+    id:'rug', location:{x:196,y:245}, approach:targets.rug, interaction:'settle',
     available:({distance,sleepiness})=>distance>17 && sleepiness<.95,
     weight:({sleepiness})=>1.1+sleepiness*.7, after:[phase('calm','sit',[5,18])]
   },
   {
-    id:'bed', location:{x:374,y:216}, approach:targets.bed, interaction:'sleep',
+    id:'bed', location:{x:352,y:181}, approach:targets.bed, interaction:'sleep',
     invitation:'Descansar perto da cama?', available:({sleepiness})=>sleepiness>=.46,
     weight:({sleepiness})=>1 + sleepiness**3*9,
     before:[{...phase('drowsy','yawn',[.95,2.5]),face:'east'}],
